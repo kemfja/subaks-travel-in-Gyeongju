@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>경주 주말 핫플 지도</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Pretendard', sans-serif; }
+        /* 콤팩트 필터바를 위한 스크롤바 숨김 처리 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .custom-popup .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .custom-popup .leaflet-popup-content {
+            margin: 16px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col h-screen overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm flex flex-col lg:flex-row items-center justify-between px-6 py-3 z-10 relative shrink-0 gap-3">
+        <!-- Left: Title -->
+        <div class="w-full lg:w-1/4 text-center lg:text-left">
+            <h1 class="text-xl font-extrabold text-gray-800 tracking-tight">🍉 SUBAK'S 경주 나들이</h1>
+        </div>
+        
+        <!-- Center: Toggles -->
+        <div class="flex bg-gray-100 p-1 rounded-lg w-auto shrink-0">
+            <button id="btn-map" class="bg-white shadow-sm px-5 py-1.5 rounded-md text-sm font-bold text-gray-800 transition-all">지도</button>
+            <button id="btn-list" class="px-5 py-1.5 rounded-md text-sm text-gray-500 font-medium hover:text-gray-800 transition-all">리스트</button>
+            <div class="w-px bg-gray-300 mx-1 my-1"></div>
+            <button id="btn-add-marker" class="px-4 py-1.5 rounded-md text-sm text-blue-600 font-bold hover:bg-blue-50 transition-all flex items-center gap-1">➕ 직접 추가</button>
+        </div>
+
+        <!-- Right: Filters (Compact) -->
+        <div class="w-full lg:w-auto flex flex-nowrap overflow-x-auto no-scrollbar gap-1.5 text-xs font-medium pb-1 lg:pb-0 justify-start lg:justify-end shrink-0">
+            <button class="filter-btn px-2.5 py-1 rounded-md border transition-all flex items-center shrink-0 cursor-pointer" data-type="all" data-active-bg="bg-gray-800" data-active-border="border-gray-800" data-active-text="text-white">
+                전체
+            </button>
+            <button class="filter-btn px-2.5 py-1 rounded-md border transition-all flex items-center gap-1 shrink-0 cursor-pointer" data-type="tour" data-active-bg="bg-blue-50" data-active-border="border-blue-200" data-active-text="text-blue-800">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span> 관광지
+            </button>
+            <button class="filter-btn px-2.5 py-1 rounded-md border transition-all flex items-center gap-1 shrink-0 cursor-pointer" data-type="food" data-active-bg="bg-red-50" data-active-border="border-red-200" data-active-text="text-red-800">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span> 맛집
+            </button>
+            <button class="filter-btn px-2.5 py-1 rounded-md border transition-all flex items-center gap-1 shrink-0 cursor-pointer" data-type="cafe" data-active-bg="bg-green-50" data-active-border="border-green-200" data-active-text="text-green-800">
+                <span class="w-2 h-2 rounded-full bg-green-500"></span> 카페
+            </button>
+            <button class="filter-btn px-2.5 py-1 rounded-md border transition-all flex items-center gap-1 shrink-0 cursor-pointer" data-type="transport" data-active-bg="bg-purple-50" data-active-border="border-purple-200" data-active-text="text-purple-800">
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span> 교통
+            </button>
+            <button class="filter-btn px-2.5 py-1 rounded-md border transition-all flex items-center gap-1 shrink-0 cursor-pointer" data-type="shop" data-active-bg="bg-orange-50" data-active-border="border-orange-200" data-active-text="text-orange-800">
+                <span class="w-2 h-2 rounded-full bg-orange-500"></span> 소품/서점
+            </button>
+            <button class="filter-btn px-2.5 py-1 rounded-md border transition-all flex items-center gap-1 shrink-0 cursor-pointer" data-type="stay" data-active-bg="bg-cyan-50" data-active-border="border-cyan-200" data-active-text="text-cyan-800">
+                <span class="w-2 h-2 rounded-full bg-cyan-500"></span> 숙소
+            </button>
+            
+            <!-- 구분선 및 즐겨찾기 필터 버튼 -->
+            <div class="w-px h-4 bg-gray-300 mx-1 my-auto shrink-0"></div>
+            <button id="btn-favorite-filter" class="px-2.5 py-1 rounded-md border bg-white border-gray-200 text-gray-400 opacity-60 transition-all flex items-center gap-0.5 shrink-0 cursor-pointer hover:bg-yellow-50 hover:border-yellow-200 hover:text-yellow-600 hover:opacity-100">
+                <span class="text-yellow-400 text-sm leading-none pb-0.5">★</span> 찜
+            </button>
+        </div>
+    </header>
+
+    <!-- Map Container -->
+    <div id="map" class="flex-1 w-full relative z-10"></div>
+
+    <!-- List Container -->
+    <div id="list-view" class="hidden overflow-y-auto flex-1 w-full bg-white z-20">
+        <div class="max-w-7xl mx-auto p-6">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                <table class="min-w-full divide-y divide-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="py-3.5 pl-4 pr-2 text-center text-sm font-semibold text-gray-400 sm:pl-6 w-12" title="즐겨찾기">★</th>
+                            <th scope="col" class="px-2 py-3.5 text-left text-sm font-semibold text-gray-900 w-16">번호</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none" data-sort="type">구분 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-48 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none" data-sort="name">장소명 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none" data-sort="address">주소 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-32">운영 시간</th>
+                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24">휴무일</th>
+                            <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 w-32">
+                                <span class="sr-only">네이버 지도</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="list-tbody" class="divide-y divide-gray-200 bg-white">
+                        <!-- Javascript로 리스트가 렌더링됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Marker Toast -->
+    <div id="add-toast" class="fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[500] bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg text-sm font-bold hidden pointer-events-none transition-all">
+        지도에서 마커를 추가할 위치를 클릭해주세요! 📍
+    </div>
+
+    <!-- Add Marker Modal -->
+    <div id="add-modal" class="fixed inset-0 z-[1000] hidden bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h2 class="text-xl font-bold mb-4">새 장소 추가 📍</h2>
+            <form id="add-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">장소명 *</label>
+                    <input type="text" id="add-name" required placeholder="예: 나만의 비밀 식당" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">구분 *</label>
+                        <select id="add-type" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
+                            <option value="tour">관광지</option>
+                            <option value="food">맛집</option>
+                            <option value="cafe">카페</option>
+                            <option value="transport">교통</option>
+                            <option value="shop">소품/서점</option>
+                            <option value="stay">숙소</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">운영 시간</label>
+                        <input type="text" id="add-hours" placeholder="예: 09:00 - 18:00" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">간단한 설명 *</label>
+                    <input type="text" id="add-desc" required placeholder="경치 좋은 곳" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">휴무일</label>
+                    <input type="text" id="add-closed" placeholder="예: 연중무휴" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" id="btn-cancel-add" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">취소</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors">추가하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirm Modal (기본 confirm 차단 우회용 커스텀 모달) -->
+    <div id="delete-confirm-modal" class="fixed inset-0 z-[2000] hidden bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4 text-center">
+            <h2 class="text-lg font-bold mb-2 text-gray-800">장소 삭제 🗑️</h2>
+            <p class="text-sm text-gray-600 mb-6">추가하신 장소를 정말 삭제하시겠습니까?</p>
+            <div class="flex justify-center gap-2">
+                <button type="button" id="btn-cancel-delete" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors w-full">취소</button>
+                <button type="button" id="btn-confirm-delete" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors w-full">삭제하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script>
+        // --- 로컬 스토리지에서 즐겨찾기 및 직접 추가 목록 불러오기 ---
+        let favorites = [];
+        let customLocations = [];
+        try {
+            favorites = JSON.parse(localStorage.getItem('gyeongju_favorites')) || [];
+            customLocations = JSON.parse(localStorage.getItem('gyeongju_custom_locations')) || [];
+        } catch(e) { console.warn("localStorage 사용 불가"); }
+
+        const saveFavorites = () => {
+            try {
+                localStorage.setItem('gyeongju_favorites', JSON.stringify(favorites));
+            } catch(e) {}
+        };
+        const saveCustomLocations = () => {
+            try {
+                localStorage.setItem('gyeongju_custom_locations', JSON.stringify(customLocations));
+            } catch(e) {}
+        };
+
+        // 경주 중심 좌표 (대릉원 인근)
+        const gyeongjuCenter = [35.8383, 129.2116];
+        
+        // 지도 초기화
+        const map = L.map('map').setView(gyeongjuCenter, 13);
+
+        // OpenStreetMap 타일 레이어 추가
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // 마커 색상 정의 (SVG 아이콘 활용)
+        const createIcon = (color) => {
+            return L.divIcon({
+                className: 'custom-icon',
+                html: `<svg width="30" height="42" viewBox="0 0 30 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 0C6.71573 0 0 6.71573 0 15C0 26.25 15 42 15 42C15 42 30 26.25 30 15C30 6.71573 23.2843 0 15 0Z" fill="${color}"/>
+                        <circle cx="15" cy="15" r="7" fill="white"/>
+                       </svg>`,
+                iconSize: [30, 42],
+                iconAnchor: [15, 42],
+                popupAnchor: [0, -40]
+            });
+        };
+
+        const icons = {
+            tour: createIcon('#3B82F6'), // Blue
+            food: createIcon('#EF4444'), // Red
+            cafe: createIcon('#10B981'),  // Green
+            transport: createIcon('#A855F7'), // Purple
+            shop: createIcon('#F97316'), // Orange
+            stay: createIcon('#06B6D4')  // Cyan
+        };
+
+        // 장소 데이터 리스트
+        const locations = [
+            // 교통
+            { name: "경주역", searchName: "경주역 KTX", lat: 35.7976, lng: 129.1398, type: "transport", desc: "경주의 주요 관문. (구 신경주역)", address: "경북 경주시 건천읍 신경주역로 80", hours: "상시", closed: "연중무휴" },
+
+            // 관광지
+            { name: "불국사", searchName: "불국사", lat: 35.7899, lng: 129.3318, type: "tour", desc: "유네스코 세계문화유산. 필수 코스.", address: "경북 경주시 불국로 385", hours: "07:30 - 17:30", closed: "연중무휴" },
+            { name: "석굴암", searchName: "석굴암", lat: 35.7949, lng: 129.3492, type: "tour", desc: "신라 불교 미술의 정수.", address: "경북 경주시 불국로 873-243", hours: "09:00 - 17:30", closed: "연중무휴" },
+            { name: "대릉원", searchName: "대릉원", lat: 35.8383, lng: 129.2116, type: "tour", desc: "도심 속 거대한 고분군.", address: "경북 경주시 황남동 31-1", hours: "09:00 - 22:00", closed: "연중무휴" },
+            { name: "동궁과 월지", searchName: "동궁과 월지", lat: 35.8347, lng: 129.2266, type: "tour", desc: "경주 최고의 야경 명소.", address: "경북 경주시 원화로 102", hours: "09:00 - 22:00", closed: "연중무휴" },
+            { name: "황리단길", searchName: "황리단길", lat: 35.8377, lng: 129.2096, type: "tour", desc: "한옥 감성 거리.", address: "경북 경주시 포석로 1080 일대", hours: "상시 개방", closed: "매장별 상이" },
+            { name: "경주월드", searchName: "경주월드", lat: 35.8364, lng: 129.2821, type: "tour", desc: "스릴 넘치는 테마파크.", address: "경북 경주시 보문로 544", hours: "10:00 - 18:00", closed: "연중무휴" },
+            { name: "경주엑스포대공원", searchName: "경주엑스포대공원", lat: 35.8285, lng: 129.2806, type: "tour", desc: "경주타워, 솔거미술관 등 다양한 볼거리가 가득한 문화 테마파크.", address: "경북 경주시 경감로 614", hours: "10:00 - 18:00", closed: "연중무휴" },
+            { name: "옥산서원", searchName: "옥산서원", lat: 35.9961, lng: 129.1633, type: "tour", desc: "유네스코 세계문화유산.", address: "경북 경주시 안강읍 옥산서원길 216-27", hours: "09:00 - 18:00", closed: "연중무휴" },
+            { name: "오릉", searchName: "경주 오릉", lat: 35.8227, lng: 129.2104, type: "tour", desc: "신라 초기 왕들의 무덤. 평화로운 산책로와 대나무숲이 아름다운 곳.", address: "경북 경주시 탑동 67", hours: "09:00 - 18:00", closed: "연중무휴" },
+            
+            // 맛집
+            { name: "향화정", searchName: "경주 향화정", lat: 35.8375, lng: 129.2087, type: "food", desc: "황리단길 인기 맛집.", address: "경북 경주시 사정로57번길 17", hours: "11:00 - 21:00", closed: "연중무휴" },
+            { name: "가마솥족발", searchName: "경주 가마솥족발", lat: 35.8427, lng: 129.2081, type: "food", desc: "현지인 추천 족발 맛집.", address: "경북 경주시 노서동 54-4", hours: "11:30 - 21:30", closed: "매주 화요일" },
+            { name: "영양숯불갈비", searchName: "경주 영양숯불갈비", lat: 35.8415, lng: 129.2091, type: "food", desc: "50년 전통의 한우 숯불갈비.", address: "경북 경주시 봉황로 79", hours: "10:30 - 21:00", closed: "연중무휴" },
+            { name: "함양집 황리단점", searchName: "경주 함양집 황남점", lat: 35.8358, lng: 129.2095, type: "food", desc: "전통 육회물회 맛집.", address: "경북 경주시 포석로1050번길 39", hours: "10:30 - 20:00", closed: "매주 수,목" },
+            { name: "대화만두 본점", searchName: "경주 대화만두 본점", lat: 35.8421, lng: 129.2117, type: "food", desc: "1988년부터 이어온 쫄면과 만두가 맛있는 경주 로컬 맛집.", address: "경북 경주시 계림로 93", hours: "11:30 - 20:30", closed: "매주 월요일" },
+            
+            // 옥산서원 근처 맛집
+            { name: "시골밥상", searchName: "경주 안강 시골밥상", lat: 35.9950, lng: 129.1640, type: "food", desc: "⭐ 평점 4.2 | 옥산서원 산책 전후 들르기 좋은 소박하고 든든한 시골풍 백반집.", address: "경북 경주시 안강읍 옥산서원길", hours: "10:00 - 21:00", closed: "매일 운영" },
+            { name: "통나무집식당", searchName: "경주 안강 통나무집식당", lat: 35.9955, lng: 129.1635, type: "food", desc: "⭐ 평점 4.2 | 편안하고 정겨운 분위기에서 든든하게 식사하기 좋은 로컬 식당.", address: "경북 경주시 안강읍 옥산서원길", hours: "11:00 - 21:00", closed: "매일 운영" },
+            { name: "산장식당", searchName: "경주 안강 산장식당", lat: 35.9970, lng: 129.1620, type: "food", desc: "⭐ 평점 4.1 | 복잡하지 않고 조용한 분위기 속에서 여유롭게 식사를 원할 때 추천.", address: "경북 경주시 안강읍 옥산서원길", hours: "09:00 - 21:00", closed: "매일 운영" },
+
+            // 문무대왕릉/감포 근처 맛집
+            { name: "대구회식당", searchName: "경주 문무대왕면 대구회식당", lat: 35.7380, lng: 129.4800, type: "food", desc: "⭐ 평점 4.7 | 문무대왕릉 앞 해안길 위치. 평점이 독보적으로 높은 신선한 횟집.", address: "경북 경주시 문무대왕면 봉길해안길", hours: "11:00 - 21:00", closed: "매일 운영" },
+            { name: "감포횟집", searchName: "경주 감포횟집", lat: 35.7950, lng: 129.5050, type: "food", desc: "⭐ 평점 4.2 | 시원한 바다 풍경과 함께 해산물 요리와 회를 전문으로 즐길 수 있는 곳.", address: "경북 경주시 감포읍 대본리", hours: "09:00 - 20:00", closed: "매일 운영" },
+            { name: "삼거리식당", searchName: "경주 문무대왕면 삼거리식당", lat: 35.7375, lng: 129.4795, type: "food", desc: "⭐ 평점 4.3 | 해산물 외에 깔끔한 정식이나 든든한 식사를 원할 때 방문하기 좋은 식당.", address: "경북 경주시 문무대왕면 봉길리", hours: "09:30 - 20:00", closed: "매일 운영" },
+            
+            // --- 신규 대량 추가 맛집 ---
+            { name: "진양닭집", searchName: "경주 진양닭집", lat: 35.8643, lng: 129.2132, type: "food", desc: "40년 전통의 경주 현지인 치킨/닭강정 맛집.", address: "경북 경주시 용담로116번길 41-17", hours: "11:00 - 23:00", closed: "매일 운영" },
+            { name: "충효닭집", searchName: "경주 충효닭집", lat: 35.8431, lng: 129.2045, type: "food", desc: "중앙시장 내 위치한 경주 3대 통닭 맛집.", address: "경북 경주시 금성로 295 중앙시장", hours: "09:30 - 20:00", closed: "1, 15일 휴무" },
+            { name: "대남통닭", searchName: "경주 대남통닭", lat: 35.8462, lng: 129.2031, type: "food", desc: "중앙시장 부근의 양 많고 맛있는 로컬 닭강정 맛집.", address: "경북 경주시 성건동 339-2", hours: "09:00 - 21:00", closed: "매일 운영" },
+            { name: "현대밀면", searchName: "경주 현대밀면", lat: 35.8445, lng: 129.2065, type: "food", desc: "오랜 전통을 자랑하는 경주 노포 밀면 맛집.", address: "경북 경주시 화랑로 61", hours: "11:00 - 18:00", closed: "매일 운영" },
+            { name: "도미", searchName: "경주 도미", lat: 35.8423, lng: 129.2111, type: "food", desc: "루프탑에서 즐기는 화덕피자와 시원한 맥주 펍.", address: "경북 경주시 중앙로 10", hours: "11:30 - 21:00", closed: "매주 화요일" },
+            { name: "족발공장", searchName: "경주 족발공장", lat: 35.8458, lng: 129.2141, type: "food", desc: "부드럽고 쫄깃한 식감이 일품인 경주 현지인 족발 맛집.", address: "경북 경주시 동문로 38", hours: "16:00 - 24:00", closed: "매주 일요일" },
+            { name: "짱궤", searchName: "경주 짱궤", lat: 35.8492, lng: 129.2165, type: "food", desc: "오래된 현지인 중식 맛집.", address: "경북 경주시 원화로281번길 11", hours: "11:00 - 20:00", closed: "매주 월요일" },
+            { name: "류대협명인곰탕", searchName: "경주 류대협명인곰탕", lat: 35.8312, lng: 129.2221, type: "food", desc: "진하고 깊은 국물 맛을 자랑하는 곰탕 전문점.", address: "경북 경주시 원화로", hours: "09:00 - 20:00", closed: "연중무휴" },
+            { name: "용산회식당", searchName: "경주 용산회식당", lat: 35.7874, lng: 129.2082, type: "food", desc: "가성비 최고! 신선한 회덮밥 단일 메뉴로 줄 서서 먹는 내남면 식당.", address: "경북 경주시 내남면 포석로 112", hours: "08:30 - 14:00", closed: "매주 월요일" },
+            { name: "경주신라반상 수리뫼", searchName: "경주 수리뫼", lat: 35.7871, lng: 129.2075, type: "food", desc: "품격 있는 전통 한정식을 맛볼 수 있는 곳.", address: "경북 경주시 내남면 포석로 110-32", hours: "11:30 - 20:00", closed: "매주 화요일" },
+            { name: "내남식육식당", searchName: "경주 내남식육식당", lat: 35.7725, lng: 129.1983, type: "food", desc: "질 좋은 고기를 합리적인 가격에 즐길 수 있는 현지인 고깃집.", address: "경북 경주시 내남면 이조3길 6", hours: "11:00 - 21:00", closed: "매주 월요일" },
+
+            // 카페
+            { name: "노워즈", searchName: "경주 노워즈", lat: 35.8379, lng: 129.2099, type: "cafe", desc: "엑설런트 라떼 유명 카페.", address: "경북 경주시 태종로 744", hours: "12:00 - 18:00", closed: "연중무휴" },
+            { name: "스컹크웍스", searchName: "경주 스컹크웍스", lat: 35.8371, lng: 129.2083, type: "cafe", desc: "대형 한옥 카페.", address: "경북 경주시 포석로 1058-3", hours: "10:00 - 22:00", closed: "연중무휴" },
+            { name: "향미사", searchName: "경주 향미사", lat: 35.8412, lng: 129.2110, type: "cafe", desc: "스페셜티 커피 추천.", address: "경북 경주시 태종로 734", hours: "11:00 - 18:00", closed: "연중무휴" },
+            { name: "올리브", searchName: "경주 올리브 베이커리", lat: 35.8368, lng: 129.2089, type: "cafe", desc: "화이트 톤 예쁜 한옥 카페.", address: "경북 경주시 사정로57번길 7-6", hours: "10:00 - 21:00", closed: "연중무휴" },
+            { name: "커피 플레이스", searchName: "경주 커피플레이스", lat: 35.8434, lng: 129.2115, type: "cafe", desc: "로컬 로스터리 커피 맛집.", address: "경북 경주시 중앙로 18", hours: "08:00 - 18:00", closed: "연중무휴" },
+            { name: "앙주", searchName: "경주 앙주", lat: 35.8372, lng: 129.2091, type: "cafe", desc: "과일 타르트 디저트 맛집.", address: "경북 경주시 포석로1068번길 23", hours: "11:00 - 19:00", closed: "매주 월,화" },
+            { name: "이스트1779", searchName: "이스트1779", lat: 35.8306, lng: 129.2166, type: "cafe", desc: "교촌마을 내 붉은 벽돌이 매력적인 감성 카페.", address: "경북 경주시 교촌안길 21", hours: "11:00 - 20:00", closed: "매주 화요일" },
+            { name: "소노캄경주 오롯", searchName: "소노캄경주 오롯", lat: 35.8422, lng: 129.2965, type: "cafe", desc: "소노캄 경주 1층에 위치한 북카페 겸 라운지.", address: "경북 경주시 보문로 402-12 1층", hours: "09:00 - 21:00", closed: "연중무휴" },
+            { name: "스타트커피", searchName: "경주 스타트커피", lat: 35.8115, lng: 129.5070, type: "cafe", desc: "⭐ 평점 4.24 | 바다와 함께하는 여유로운 커피 한잔. 감포 앞바다 오션뷰 카페.", address: "경북 경주시 감포읍 동해안로 1862", hours: "상시 영업 (17:30 라스트오더)", closed: "매일 운영" },
+            
+            // --- 신규 대량 추가 카페 ---
+            { name: "아차차", searchName: "경주 아차차", lat: 35.8395, lng: 129.2098, type: "cafe", desc: "귀여운 비주얼과 달콤한 맛의 황리단길 아이스크림 전문점.", address: "경북 경주시 포석로 1083", hours: "11:00 - 19:00", closed: "매일 운영" },
+            { name: "디저트시네마 경주점", searchName: "디저트시네마 경주점", lat: 35.8381, lng: 129.2085, type: "cafe", desc: "부산에서 건너온 결이 살아있는 페스츄리 맛집.", address: "경북 경주시 사정동", hours: "11:00 - 18:00", closed: "휴무일 인스타 공지" },
+
+            // 숙소
+            { name: "경주 아벤타 호텔", searchName: "경주 아벤타호텔", lat: 35.8427, lng: 129.2057, type: "stay", desc: "경주 터미널 근처 가성비 좋고 깔끔한 비즈니스 호텔.", address: "경북 경주시 태종로 685번길 12", hours: "IN 15:00 / OUT 11:00", closed: "연중무휴" },
+            
+            // --- 신규 대량 추가 숙소 ---
+            { name: "스테이 화녹", searchName: "경주 스테이 화녹", lat: 35.8374, lng: 129.2088, type: "stay", desc: "황리단길 안쪽, 고즈넉하고 감성적인 프리미엄 한옥 숙소.", address: "경북 경주시 포석로1068번길 17-5", hours: "IN 15:00 / OUT 11:00", closed: "연중무휴" },
+
+            // 인스타그램 핫플
+            { name: "월정교", searchName: "월정교", lat: 35.8296, lng: 129.2157, type: "tour", desc: "야경 반영샷 명소.", address: "경북 경주시 교동 274", hours: "09:00 - 22:00", closed: "연중무휴" },
+            { name: "황금십원빵 본점", searchName: "경주 황금십원빵 본점", lat: 35.8377, lng: 129.2093, type: "food", desc: "황리단길 필수 간식.", address: "경북 경주시 포석로 1083", hours: "10:00 - 21:00", closed: "연중무휴" },
+            { name: "카페 솔", searchName: "경주 카페솔", lat: 35.8388, lng: 129.2105, type: "cafe", desc: "연못 포토존 감성 카페.", address: "경북 경주시 포석로1092번길 62-8", hours: "10:30 - 21:00", closed: "연중무휴" },
+            { name: "바실라", searchName: "경주 바실라", lat: 35.7960, lng: 129.3020, type: "cafe", desc: "해바라기/유채꽃 뷰 맛집.", address: "경북 경주시 하동못안길 88", hours: "10:00 - 21:00", closed: "연중무휴" },
+            { name: "문무대왕릉", searchName: "문무대왕릉", lat: 35.7393, lng: 129.4803, type: "tour", desc: "신라 문무왕 수중릉.", address: "경북 경주시 문무대왕면 봉길리 30-1", hours: "상시 개방", closed: "연중무휴" },
+            
+            // --- 신규 대량 추가 관광지 ---
+            { name: "경북천년숲정원", searchName: "경북천년숲정원", lat: 35.8035, lng: 129.2482, type: "tour", desc: "외나무다리 포토존이 있는 힐링 산책 명소 (구. 경북산림환경연구원).", address: "경북 경주시 통일로 366-4", hours: "10:00 - 17:00", closed: "매일 운영" },
+
+            // 🛍️ 독립 서점 & 소품샵
+            { name: "어서어서", searchName: "경주 어서어서", lat: 35.8385, lng: 129.2097, type: "shop", desc: "약봉투 책 포장 독립 서점.", address: "경북 경주시 포석로 1083", hours: "11:00 - 19:30", closed: "연중무휴" },
+            { name: "소소밀밀", searchName: "경주 소소밀밀", lat: 35.8378, lng: 129.2091, type: "shop", desc: "감성 그림책방.", address: "경북 경주시 포석로 1097", hours: "11:00 - 19:00", closed: "매주 화요일" },
+            { name: "오홀리데이", searchName: "경주 오홀리데이", lat: 35.8381, lng: 129.2094, type: "shop", desc: "아기자기 소품 편집샵.", address: "경북 경주시 포석로 1089-14", hours: "11:00 - 20:00", closed: "연중무휴" },
+            { name: "디스모먼트", searchName: "경주 디스모먼트", lat: 35.8380, lng: 129.2100, type: "shop", desc: "경주 자체 제작 기념품샵.", address: "경북 경주시 사정로 50-1", hours: "11:00 - 19:00", closed: "매주 목요일" },
+            { name: "국립경주박물관 천년서고", searchName: "국립경주박물관 천년서고", lat: 35.8277, lng: 129.2274, type: "shop", desc: "국립경주박물관 내 위치한 감각적인 북라운지.", address: "경북 경주시 일정로 186", hours: "10:00 - 18:00", closed: "1월 1일, 명절 당일" }
+        ];
+
+        // 뱃지 색상 및 라벨 매핑 객체
+        const badgeColors = {
+            tour: 'bg-blue-100 text-blue-800',
+            food: 'bg-red-100 text-red-800',
+            cafe: 'bg-green-100 text-green-800',
+            transport: 'bg-purple-100 text-purple-800',
+            shop: 'bg-orange-100 text-orange-800',
+            stay: 'bg-cyan-100 text-cyan-800'
+        };
+        const labels = { tour: '관광지', food: '맛집', cafe: '카페', transport: '교통', shop: '소품/서점', stay: '숙소' };
+
+        // 마커 데이터를 관리할 배열
+        const markersData = [];
+
+        // 팝업 HTML 생성 함수
+        const getPopupContent = (loc) => {
+            const isFav = favorites.includes(loc.name);
+            const searchQuery = encodeURIComponent(loc.searchName);
+            const naverMapUrl = `https://map.naver.com/p/search/${searchQuery}?c=${loc.lng},${loc.lat},15,0,0,0,dh`;
+            // 따옴표 및 특수문자로 인한 HTML 깨짐을 완벽히 방지하기 위해 URL 인코딩 적용
+            const encodedName = encodeURIComponent(loc.name).replace(/'/g, "%27");
+
+            // 직접 추가한 마커일 경우 삭제 버튼 UI 추가
+            const deleteBtnHtml = loc.isCustom ? 
+                `<button type="button" onclick="deleteCustomMarker(event, '${encodedName}')" class="w-full mt-2 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 py-1.5 rounded transition-colors">이 장소 삭제하기 🗑️</button>` : '';
+
+            return `
+                <div class="w-full">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-xs font-semibold px-2 py-1 rounded-full ${badgeColors[loc.type]}">${labels[loc.type]}</span>
+                        <button type="button" onclick="toggleFavorite(event, '${encodedName}')" class="text-2xl leading-none focus:outline-none transition-colors ${isFav ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" title="즐겨찾기">
+                            ${isFav ? '★' : '☆'}
+                        </button>
+                    </div>
+                    <h3 class="text-lg font-bold mt-1 mb-1 text-gray-800">${loc.name}</h3>
+                    <p class="text-sm text-gray-600 mb-2">${loc.desc}</p>
+                    
+                    <div class="space-y-1 text-xs text-gray-500 border-t pt-2 mb-3">
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-bold shrink-0 text-gray-700">⏰ 정보:</span>
+                            <span>${loc.hours || '-'}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-bold shrink-0 text-gray-700">🗓️ 휴무:</span>
+                            <span>${loc.closed || '-'}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-2">
+                        <a href="${naverMapUrl}" target="_blank" rel="noopener noreferrer" class="inline-block w-full text-center px-3 py-1.5 text-xs font-medium text-white bg-[#03C75A] rounded hover:bg-[#02b351] transition-colors shadow-sm">
+                            네이버 지도에서 보기 ↗
+                        </a>
+                        ${deleteBtnHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        // 삭제할 마커 이름을 임시 저장할 변수
+        let markerToDelete = null;
+
+        // 전역 스코프에 사용자 지정 장소 삭제 함수 노출 (모달 띄우기)
+        window.deleteCustomMarker = (e, encodedName) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation(); // 팝업창 뒤의 지도까지 클릭되는 현상 방지
+            }
+            markerToDelete = decodeURIComponent(encodedName);
+            document.getElementById('delete-confirm-modal').classList.remove('hidden');
+        };
+
+        // 커스텀 삭제 모달 취소 버튼
+        document.getElementById('btn-cancel-delete').addEventListener('click', () => {
+            markerToDelete = null;
+            document.getElementById('delete-confirm-modal').classList.add('hidden');
+        });
+
+        // 커스텀 삭제 모달 확인(삭제) 버튼
+        document.getElementById('btn-confirm-delete').addEventListener('click', () => {
+            if (!markerToDelete) return;
+            const name = markerToDelete;
+            
+            map.closePopup(); // 팝업 깨짐 및 렌더링 충돌 방지를 위해 먼저 닫기
+            
+            setTimeout(() => {
+                customLocations = customLocations.filter(loc => loc.name !== name);
+                saveCustomLocations();
+                
+                if(favorites.includes(name)) {
+                    favorites = favorites.filter(f => f !== name);
+                    saveFavorites();
+                }
+                
+                rebuildMarkers();
+                
+                markerToDelete = null;
+                document.getElementById('delete-confirm-modal').classList.add('hidden');
+            }, 50);
+        });
+
+        // 전역 스코프에 즐겨찾기 토글 함수 노출
+        window.toggleFavorite = (e, encodedName) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const name = decodeURIComponent(encodedName);
+            if (favorites.includes(name)) {
+                favorites = favorites.filter(f => f !== name);
+            } else {
+                favorites.push(name);
+            }
+            saveFavorites();
+
+            // 열려있는 팝업이나 지도 마커 콘텐츠 업데이트
+            markersData.forEach(item => {
+                if (item.loc.name === name) {
+                    item.marker.setPopupContent(getPopupContent(item.loc));
+                }
+            });
+
+            // 리스트 뷰 즉시 업데이트
+            renderList();
+
+            // 즐겨찾기 필터가 켜져있는 상태에서 해제했다면 지도 마커도 즉시 숨김 처리
+            if (isFavoriteFilterActive) {
+                updateFilters();
+            }
+        };
+
+        // 마커 전체 초기화/재생성 함수 (기본 데이터 + 커스텀 데이터 지원)
+        const rebuildMarkers = () => {
+            // 기존 마커 지도에서 모두 제거
+            markersData.forEach(item => {
+                if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
+            });
+            markersData.length = 0; // 배열 비우기
+
+            // 기본 장소와 사용자가 직접 추가한 장소 병합
+            const allLocations = [...locations, ...customLocations];
+
+            // 지도에 마커 추가 및 팝업 설정
+            allLocations.forEach(loc => {
+                const marker = L.marker([loc.lat, loc.lng], { icon: icons[loc.type] });
+                marker.bindPopup(getPopupContent(loc), { 
+                    className: 'custom-popup',
+                    closeButton: false, // x 버튼 삭제 적용
+                    minWidth: 260,      // 초기 오픈 시 UI 깨짐 방지용 최소 너비 고정
+                    maxWidth: 260       // 너비 고정
+                });
+                markersData.push({ marker: marker, type: loc.type, loc: loc });
+            });
+
+            // 필터 및 리스트 갱신
+            updateFilters();
+        };
+
+        // --- 📍 마커 추가 이벤트 로직 ---
+        let isAddMode = false;
+        let pendingLatLng = null;
+
+        const btnAddMarker = document.getElementById('btn-add-marker');
+        const addToast = document.getElementById('add-toast');
+        const addModal = document.getElementById('add-modal');
+        const addForm = document.getElementById('add-form');
+        const btnCancelAdd = document.getElementById('btn-cancel-add');
+
+        btnAddMarker.addEventListener('click', () => {
+            isAddMode = true;
+            addToast.classList.remove('hidden');
+            map.getContainer().style.cursor = 'crosshair';
+            
+            // 만약 리스트 화면이라면 지도로 자동 전환시킴
+            if(document.getElementById('map').classList.contains('hidden')){
+                document.getElementById('btn-map').click();
+            }
+        });
+
+        btnCancelAdd.addEventListener('click', () => {
+            addModal.classList.add('hidden');
+            addForm.reset();
+            pendingLatLng = null;
+        });
+
+        map.on('click', function(e) {
+            if(!isAddMode) return;
+            
+            pendingLatLng = e.latlng;
+            isAddMode = false;
+            addToast.classList.add('hidden');
+            map.getContainer().style.cursor = '';
+            
+            // 클릭한 위치를 물고 정보 입력 모달 띄우기
+            addModal.classList.remove('hidden');
+            setTimeout(() => document.getElementById('add-name').focus(), 100);
+        });
+
+        addForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const nameVal = document.getElementById('add-name').value.trim();
+            if(!nameVal) return;
+
+            const newLoc = {
+                name: nameVal,
+                searchName: nameVal,
+                lat: pendingLatLng.lat,
+                lng: pendingLatLng.lng,
+                type: document.getElementById('add-type').value,
+                desc: document.getElementById('add-desc').value || '',
+                address: "직접 추가한 핀 위치",
+                hours: document.getElementById('add-hours').value || '-',
+                closed: document.getElementById('add-closed').value || '-',
+                isCustom: true // 커스텀 장소 식별값
+            };
+
+            customLocations.push(newLoc);
+            saveCustomLocations();
+            
+            addModal.classList.add('hidden');
+            addForm.reset();
+            pendingLatLng = null;
+
+            rebuildMarkers();
+            
+            // 방금 추가한 마커로 부드럽게 이동하고 팝업 열기
+            map.flyTo([newLoc.lat, newLoc.lng], 15, { animate: true });
+            setTimeout(() => {
+                const addedMarkerData = markersData.find(m => m.loc.name === newLoc.name);
+                if(addedMarkerData && map.hasLayer(addedMarkerData.marker)) {
+                    addedMarkerData.marker.openPopup();
+                }
+            }, 600);
+        });
+
+        // --- 필터링 상태 관리 및 로직 ---
+        const allTypes = ['tour', 'food', 'cafe', 'transport', 'shop', 'stay'];
+        let activeTypes = [...allTypes]; // 디폴트는 전체 선택 상태
+        let isFavoriteFilterActive = false; // 즐겨찾기 필터 상태
+
+        // --- 정렬 상태 관리 ---
+        let currentSortCol = null;
+        let isSortAsc = true;
+
+        const updateFilters = () => {
+            // 버튼 UI 스타일 업데이트 (일반 유형 및 전체 버튼)
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                const type = btn.dataset.type;
+                const isAllBtn = type === 'all';
+                const isActive = isAllBtn ? activeTypes.length === allTypes.length : activeTypes.includes(type);
+                
+                const activeBg = btn.dataset.activeBg;
+                const activeBorder = btn.dataset.activeBorder;
+                const activeText = btn.dataset.activeText;
+
+                if (isActive) {
+                    btn.classList.remove('bg-white', 'border-gray-200', 'text-gray-400', 'opacity-60');
+                    btn.classList.add(activeBg, activeBorder, activeText, 'font-bold');
+                } else {
+                    btn.classList.remove(activeBg, activeBorder, activeText, 'font-bold');
+                    btn.classList.add('bg-white', 'border-gray-200', 'text-gray-400', 'opacity-60');
+                }
+            });
+
+            // 지도 마커 표시/숨김 처리 (유형 교집합 + 즐겨찾기 교집합)
+            markersData.forEach(item => {
+                const typeMatch = activeTypes.includes(item.type);
+                const favMatch = isFavoriteFilterActive ? favorites.includes(item.loc.name) : true;
+
+                if (typeMatch && favMatch) {
+                    if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
+                } else {
+                    if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
+                }
+            });
+
+            // 리스트 뷰 업데이트 실행
+            renderList();
+        };
+
+        // 즐겨찾기 전용 필터 버튼 이벤트
+        const btnFavFilter = document.getElementById('btn-favorite-filter');
+        btnFavFilter.addEventListener('click', () => {
+            isFavoriteFilterActive = !isFavoriteFilterActive;
+            
+            if (isFavoriteFilterActive) {
+                btnFavFilter.classList.remove('bg-white', 'border-gray-200', 'text-gray-400', 'opacity-60');
+                btnFavFilter.classList.add('bg-yellow-50', 'border-yellow-400', 'text-yellow-600', 'font-bold', 'opacity-100');
+            } else {
+                btnFavFilter.classList.remove('bg-yellow-50', 'border-yellow-400', 'text-yellow-600', 'font-bold', 'opacity-100');
+                btnFavFilter.classList.add('bg-white', 'border-gray-200', 'text-gray-400', 'opacity-60');
+            }
+            updateFilters();
+        });
+
+        // 일반 유형 필터 버튼 클릭 이벤트 등록
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.currentTarget.dataset.type;
+                
+                if (type === 'all') {
+                    if (activeTypes.length === allTypes.length) {
+                        activeTypes = []; // 모두 해제
+                    } else {
+                        activeTypes = [...allTypes]; // 모두 선택
+                    }
+                } else {
+                    if (activeTypes.includes(type)) {
+                        activeTypes = activeTypes.filter(t => t !== type); // 선택 해제
+                    } else {
+                        activeTypes.push(type); // 개별 추가
+                    }
+                }
+                updateFilters(); // 상태 변경 후 UI 동기화
+            });
+        });
+
+        // --- 헤더 정렬 클릭 이벤트 등록 ---
+        document.querySelectorAll('.sort-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const sortKey = header.dataset.sort;
+                
+                if (currentSortCol === sortKey) {
+                    isSortAsc = !isSortAsc; // 같은 컬럼 클릭 시 오름/내림차순 토글
+                } else {
+                    currentSortCol = sortKey;
+                    isSortAsc = true; // 새로운 컬럼 클릭 시 기본 오름차순
+                }
+
+                // 모든 아이콘 초기화 후 현재 클릭된 컬럼에만 아이콘 표시
+                document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '');
+                const iconSpan = header.querySelector('.sort-icon');
+                iconSpan.textContent = isSortAsc ? '▲' : '▼';
+
+                renderList(); // 정렬된 상태로 리스트 다시 렌더링
+            });
+        });
+
+        // --- 리스트 화면 렌더링 함수 ---
+        const renderList = () => {
+            const tbody = document.getElementById('list-tbody');
+            tbody.innerHTML = ''; // 초기화
+            
+            // 기본 장소와 사용자가 직접 추가한 장소 병합 데이터 사용
+            const allLocations = [...locations, ...customLocations];
+
+            // 1. 활성화된 필터 타입과 즐겨찾기 여부를 동시에 필터링
+            let filteredLocations = allLocations.filter(loc => {
+                const typeMatch = activeTypes.includes(loc.type);
+                const favMatch = isFavoriteFilterActive ? favorites.includes(loc.name) : true;
+                return typeMatch && favMatch;
+            });
+            
+            // 2. 정렬 상태가 있다면 데이터 정렬 적용
+            if (currentSortCol) {
+                filteredLocations.sort((a, b) => {
+                    let valA, valB;
+                    
+                    if (currentSortCol === 'type') {
+                        // 구분은 뱃지 텍스트(한글) 기준으로 정렬
+                        valA = labels[a.type];
+                        valB = labels[b.type];
+                    } else if (currentSortCol === 'name') {
+                        valA = a.name;
+                        valB = b.name;
+                    } else if (currentSortCol === 'address') {
+                        valA = a.address || '';
+                        valB = b.address || '';
+                    }
+
+                    if (valA < valB) return isSortAsc ? -1 : 1;
+                    if (valA > valB) return isSortAsc ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            // 3. 필터 및 정렬이 완료된 데이터로 HTML 렌더링
+            filteredLocations.forEach((loc, index) => {
+                const searchQuery = encodeURIComponent(loc.searchName);
+                const naverMapUrl = `https://map.naver.com/p/search/${searchQuery}?c=${loc.lng},${loc.lat},15,0,0,0,dh`;
+                const isFav = favorites.includes(loc.name);
+                // 따옴표 및 특수문자로 인한 HTML 깨짐 방지
+                const encodedName = encodeURIComponent(loc.name).replace(/'/g, "%27");
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition-colors";
+                
+                tr.innerHTML = `
+                    <td class="whitespace-nowrap py-4 pl-4 pr-2 text-center sm:pl-6">
+                        <button type="button" onclick="toggleFavorite(event, '${encodedName}')" class="text-xl leading-none focus:outline-none transition-colors ${isFav ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}">
+                            ${isFav ? '★' : '☆'}
+                        </button>
+                    </td>
+                    <td class="whitespace-nowrap px-2 py-4 text-sm font-medium text-gray-500">${index + 1}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm">
+                        <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold ${badgeColors[loc.type]}">${labels[loc.type]}</span>
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm font-bold text-gray-900">${loc.name}</td>
+                    <td class="px-3 py-4 text-sm text-gray-500 min-w-[200px]">${loc.address || '-'}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${loc.hours || '-'}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${loc.closed || '-'}</td>
+                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                        <a href="${naverMapUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-[#03C75A] hover:bg-[#02b351] shadow-sm">
+                            지도 ↗
+                        </a>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        // 초기화 시 전체 렌더링 시작 (rebuildMarkers가 updateFilters, renderList를 연쇄 호출함)
+        rebuildMarkers();
+
+        // --- 토글 버튼 로직 ---
+        const btnMap = document.getElementById('btn-map');
+        const btnList = document.getElementById('btn-list');
+        const mapView = document.getElementById('map');
+        const listView = document.getElementById('list-view');
+
+        btnMap.addEventListener('click', () => {
+            mapView.classList.remove('hidden');
+            listView.classList.add('hidden');
+            
+            btnMap.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+            btnMap.classList.remove('text-gray-500', 'font-medium', 'hover:text-gray-800');
+            
+            btnList.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
+            btnList.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+            
+            setTimeout(() => { map.invalidateSize(); }, 50);
+        });
+
+        btnList.addEventListener('click', () => {
+            listView.classList.remove('hidden');
+            mapView.classList.add('hidden');
+            
+            btnList.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+            btnList.classList.remove('text-gray-500', 'font-medium', 'hover:text-gray-800');
+            
+            btnMap.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
+            btnMap.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+        });
+
+        // 브라우저 리사이즈 시 지도 크기 동기화
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+        });
+
+        // 초기 줌 설정
+        setTimeout(() => {
+            map.invalidateSize();
+            const mapSize = map.getSize();
+            
+            if (mapSize.x > 0 && mapSize.y > 0) {
+                const group = new L.featureGroup(locations.map(loc => L.marker([loc.lat, loc.lng])));
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        }, 800);
+
+    </script>
+</body>
+</html>
