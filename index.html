@@ -37,6 +37,7 @@
         <div class="flex bg-gray-100 p-1 rounded-lg w-auto shrink-0">
             <button id="btn-map" class="bg-white shadow-sm px-5 py-1.5 rounded-md text-sm font-bold text-gray-800 transition-all">지도</button>
             <button id="btn-list" class="px-5 py-1.5 rounded-md text-sm text-gray-500 font-medium hover:text-gray-800 transition-all">리스트</button>
+            <button id="btn-itinerary" class="px-5 py-1.5 rounded-md text-sm text-gray-500 font-medium hover:text-gray-800 transition-all">일정</button>
             <div class="w-px bg-gray-300 mx-1 my-1"></div>
             <button id="btn-add-marker" class="px-4 py-1.5 rounded-md text-sm text-blue-600 font-bold hover:bg-blue-50 transition-all flex items-center gap-1">➕ 직접 추가</button>
         </div>
@@ -73,6 +74,13 @@
         </div>
     </header>
 
+    <!-- 일정 서브 헤더 (모드 전환) - header 바로 아래 고정 배치 -->
+    <div id="itinerary-sub-header" class="hidden w-full bg-white border-b border-gray-200 p-2 flex justify-center gap-2 z-30 shrink-0 shadow-sm">
+        <button id="btn-mode-edit" class="px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors">✏️ 편집</button>
+        <button id="btn-mode-view-list" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200">👀 보기(리스트)</button>
+        <button id="btn-mode-view-map" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200">🗺️ 보기(지도)</button>
+    </div>
+
     <!-- Map Container -->
     <div id="map" class="flex-1 w-full relative z-10"></div>
 
@@ -90,8 +98,7 @@
                             <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none border-b border-gray-200 shadow-sm whitespace-nowrap" data-sort="address">주소 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
                             <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-36 border-b border-gray-200 shadow-sm whitespace-nowrap">운영 시간</th>
                             <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-28 border-b border-gray-200 shadow-sm whitespace-nowrap">휴무일</th>
-                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 py-3.5 pl-3 pr-2 text-center text-sm font-semibold text-gray-900 w-24 border-b border-gray-200 shadow-sm whitespace-nowrap">지도</th>
-                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 py-3.5 pl-2 pr-4 sm:pr-6 text-center text-sm font-semibold text-gray-900 w-32 border-b border-gray-200 shadow-sm whitespace-nowrap">네이버 이동</th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 py-3.5 pl-3 pr-2 text-center text-sm font-semibold text-gray-900 w-24 border-b border-gray-200 shadow-sm whitespace-nowrap">메뉴 (일정)</th>
                         </tr>
                     </thead>
                     <tbody id="list-tbody" class="divide-y divide-gray-200 bg-white">
@@ -99,6 +106,13 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- Itinerary Container (일정 뷰) -->
+    <div id="itinerary-view" class="hidden flex-1 w-full bg-gray-100 z-20 flex-col overflow-hidden h-full">
+        <div class="w-full max-w-lg mx-auto py-6 px-4 h-full flex flex-col" id="itinerary-container">
+            <!-- 일정 UI 동적 삽입 영역 -->
         </div>
     </div>
 
@@ -190,6 +204,55 @@
         </div>
     </div>
 
+    <!-- 일정 보관함 선택 모달 (지도/리스트에서 일정에 추가할 때 뜸) -->
+    <div id="itinerary-select-modal" class="fixed inset-0 z-[2000] hidden bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 class="text-lg font-bold mb-4 text-gray-800" id="itinerary-modal-title">일정에 추가</h2>
+            <div id="itinerary-day-buttons" class="flex flex-col gap-2 mb-4 max-h-60 overflow-y-auto">
+                <!-- Javascript로 데이 버튼들이 렌더링됩니다 -->
+            </div>
+            <button type="button" id="btn-close-itinerary-modal" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors w-full">취소</button>
+        </div>
+    </div>
+
+    
+    <!-- 일정 전체 초기화 커스텀 모달 -->
+    <div id="itinerary-reset-modal" class="fixed inset-0 z-[2000] hidden bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4 text-center">
+            <h2 class="text-lg font-bold mb-2 text-gray-800">일정 초기화 🗑️</h2>
+            <p class="text-sm text-gray-600 mb-6">현재 작성 중인 일정을 모두 지우시겠습니까?<br>이 작업은 되돌릴 수 없습니다!</p>
+            <div class="flex justify-center gap-2">
+                <button type="button" onclick="document.getElementById('itinerary-reset-modal').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors w-full cursor-pointer">취소</button>
+                <button type="button" id="btn-confirm-reset-itinerary" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors w-full cursor-pointer">초기화</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 다중 추가 모달 -->
+    <div id="itinerary-multi-add-modal" class="fixed inset-0 z-[2000] hidden bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl p-0 w-full max-w-md mx-4 h-[80vh] flex flex-col">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50 rounded-t-xl shrink-0">
+                <h2 class="text-lg font-bold text-gray-800" id="multi-add-title">Day X 에 여러 장소 추가</h2>
+                <button type="button" onclick="closeMultiAddModal()" class="text-gray-400 hover:text-gray-600 cursor-pointer p-1">✕</button>
+            </div>
+            
+            <div class="p-3 border-b border-gray-100 shrink-0">
+                <input type="text" id="multi-add-search" placeholder="장소명 검색..." class="w-full bg-gray-100 text-sm px-3 py-2 rounded-md outline-none focus:ring-1 focus:ring-blue-500">
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-2" id="multi-add-list">
+                <!-- Javascript로 리스트 렌더링 -->
+            </div>
+            
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2 rounded-b-xl shrink-0">
+                <button type="button" onclick="closeMultiAddModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 rounded-md transition-colors cursor-pointer">취소</button>
+                <button type="button" id="btn-confirm-multi-add" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors cursor-pointer">선택 추가 (<span id="multi-add-count">0</span>)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drag and Drop 기능을 위한 SortableJS -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
@@ -214,16 +277,18 @@
         // --- 클라우드 실시간 동기화 데이터 ---
         let favorites = [];
         let customLocations = [];
+        let itinerary = { totalDays: 0, days: [] };
         let isFirstLoad = true;
 
         const syncDataToFirebase = async () => {
             try {
-                await setDoc(mapDocRef, { favorites, customLocations });
+                await setDoc(mapDocRef, { favorites, customLocations, itinerary });
             } catch(e) { console.error("Firebase 저장 실패:", e); }
         };
 
         const saveFavorites = () => syncDataToFirebase();
         const saveCustomLocations = () => syncDataToFirebase();
+        const saveItinerary = () => syncDataToFirebase();
 
         // 365일 실시간으로 데이터를 불러오고 변경 사항을 수신하는 함수
         const loadInitialData = () => {
@@ -254,9 +319,16 @@
                     if (data) {
                         favorites = data.favorites || [];
                         customLocations = data.customLocations || [];
+                        itinerary = data.itinerary || { totalDays: 0, days: [] };
+                        if (itinerary.days && itinerary.days.length > 0 && Array.isArray(itinerary.days[0])) {
+                            // Migrate old nested arrays to objects
+                            itinerary.days = itinerary.days.map(arr => ({ items: arr || [] }));
+                            saveItinerary();
+                        }
                     } else {
                         favorites = [];
                         customLocations = [];
+                        itinerary = { totalDays: 0, days: [] };
                     }
                     
                     if (isFirstLoad) {
@@ -410,46 +482,49 @@
         // 마커 데이터를 관리할 배열
         const markersData = [];
 
-        // 팝업 HTML 생성 함수
+        // 팝업 HTML 생성 함수 (기존 디자인 복원)
         const getPopupContent = (loc) => {
             const isFav = favorites.includes(loc.name);
             const searchQuery = encodeURIComponent(loc.searchName);
             const naverMapUrl = `https://map.naver.com/p/search/${searchQuery}?c=${loc.lng},${loc.lat},15,0,0,0,dh`;
-            // 따옴표 및 특수문자로 인한 HTML 깨짐을 완벽히 방지하기 위해 URL 인코딩 적용
             const encodedName = encodeURIComponent(loc.name).replace(/'/g, "%27");
 
-            // 직접 추가한 마커일 경우 삭제 버튼 UI 추가
-            const deleteBtnHtml = loc.isCustom ? 
-                `<button type="button" onclick="deleteCustomMarker(event, '${encodedName}')" class="w-full mt-2 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 py-1.5 rounded transition-colors">이 장소 삭제하기 🗑️</button>` : '';
+            let deleteBtnHtml = '';
+            let actionBtnHtml = '';
+            
+            if (!loc.isItinerary) {
+                deleteBtnHtml = loc.isCustom ? 
+                    `<button type="button" onclick="deleteCustomMarker(event, '${encodedName}')" class="w-full mt-1.5 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 py-1.5 rounded-lg transition-colors">이 장소 삭제하기 🗑️</button>` : '';
+                
+                actionBtnHtml = `
+                    <div class="mt-3 flex flex-col gap-1.5">
+                        <a href="${naverMapUrl}" target="_blank" rel="noopener noreferrer" class="w-full text-center block px-3 py-2 text-sm font-medium text-white bg-[#03C75A] rounded-lg hover:bg-[#02b351] transition-colors shadow-sm">
+                            네이버 지도에서 보기 ↗
+                        </a>
+                        <button type="button" onclick="openItineraryModal(event, '${encodedName}')" class="w-full text-center px-3 py-1.5 text-xs font-bold text-gray-700 border border-gray-300 bg-white rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+                            🗓️ 일정에 추가
+                        </button>
+                        ${deleteBtnHtml}
+                    </div>
+                `;
+            }
 
             return `
-                <div class="w-full">
+                <div class="p-1">
                     <div class="flex justify-between items-start mb-1">
-                        <span class="text-xs font-semibold px-2 py-1 rounded-full ${badgeColors[loc.type]}">${labels[loc.type]}</span>
-                        <button type="button" onclick="toggleFavorite(event, '${encodedName}')" class="text-2xl leading-none focus:outline-none transition-colors ${isFav ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}" title="즐겨찾기">
+                        <span class="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeColors[loc.type]}">${labels[loc.type]}</span>
+                        <button type="button" onclick="toggleFavorite(event, '${encodedName}')" class="text-xl leading-none focus:outline-none transition-colors ${isFav ? 'text-yellow-400 hover:text-yellow-500' : 'text-gray-300 hover:text-yellow-400'}">
                             ${isFav ? '★' : '☆'}
                         </button>
                     </div>
-                    <h3 class="text-lg font-bold mt-1 mb-1 text-gray-800">${loc.name}</h3>
-                    <p class="text-sm text-gray-600 mb-2">${loc.desc}</p>
-                    
-                    <div class="space-y-1 text-xs text-gray-500 border-t pt-2 mb-3">
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-bold shrink-0 text-gray-700">⏰ 정보:</span>
-                            <span>${loc.hours || '-'}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="font-bold shrink-0 text-gray-700">🗓️ 휴무:</span>
-                            <span>${loc.closed || '-'}</span>
-                        </div>
+                    <h3 class="font-bold text-gray-900 text-lg leading-tight mb-0.5">${loc.name}</h3>
+                    <p class="text-[13px] text-gray-600 mb-0 break-keep">${loc.desc || '설명 없음'}</p>
+                    <hr class="my-1.5 border-gray-200">
+                    <div class="text-[12px] text-gray-500 leading-tight">
+                        ${loc.hours && loc.hours !== '-' ? `<p class="mb-0.5">⏰ 정보: ${loc.hours}</p>` : ''}
+                        ${loc.closed && loc.closed !== '-' ? `<p class="mb-0">🏠 휴무: ${loc.closed}</p>` : ''}
                     </div>
-
-                    <div class="mt-2">
-                        <a href="${naverMapUrl}" target="_blank" rel="noopener noreferrer" class="inline-block w-full text-center px-3 py-1.5 text-xs font-medium text-white bg-[#03C75A] rounded hover:bg-[#02b351] transition-colors shadow-sm">
-                            네이버 지도에서 보기 ↗
-                        </a>
-                        ${deleteBtnHtml}
-                    </div>
+                    ${actionBtnHtml}
                 </div>
             `;
         };
@@ -527,30 +602,82 @@
         };
 
         // 마커 전체 초기화/재생성 함수 (기본 데이터 + 커스텀 데이터 지원)
+        
+        const createNumberedIcon = (number, color = '#3B82F6') => {
+            return L.divIcon({
+                className: 'custom-numbered-icon',
+                html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 14px;">${number}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, -15]
+            });
+        };
+
+        // 일정 경로 폴리라인 관리
+        let itineraryPolylines = [];
+
         const rebuildMarkers = () => {
-            // 기존 마커 지도에서 모두 제거
             markersData.forEach(item => {
                 if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
             });
-            markersData.length = 0; // 배열 비우기
+            markersData.length = 0;
 
-            // 기본 장소와 사용자가 직접 추가한 장소 병합
+            // 기존 폴리라인 제거
+            itineraryPolylines.forEach(pl => { if (map.hasLayer(pl)) map.removeLayer(pl); });
+            itineraryPolylines = [];
+
             const allLocations = [...locations, ...customLocations];
+            
+            // 일정 맵 뷰 모드 검증
+            const isItineraryMap = (activeMainTab === 'btn-itinerary' && itineraryMode === 'view-map');
 
-            // 지도에 마커 추가 및 팝업 설정
-            allLocations.forEach(loc => {
-                const marker = L.marker([loc.lat, loc.lng], { icon: icons[loc.type] });
-                marker.bindPopup(getPopupContent(loc), { 
-                    className: 'custom-popup',
-                    closeButton: false, // x 버튼 삭제 적용
-                    minWidth: 260,      // 초기 오픈 시 UI 깨짐 방지용 최소 너비 고정
-                    maxWidth: 260       // 너비 고정
+            if (isItineraryMap && itinerary && itinerary.totalDays > 0) {
+                // 일정 모드 마커 렌더링 (순서 번호 적용)
+                let globalIndex = 1;
+                const dayColors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#84CC16', '#6366F1', '#A855F7'];
+
+                itinerary.days.forEach((dayObj, dayIndex) => {
+                    const dCol = dayColors[dayIndex % dayColors.length];
+                    const dayItems = dayObj.items || [];
+                    const dayCoords = [];
+
+                    dayItems.forEach((item) => {
+                        const loc = allLocations.find(l => l.name === item.name);
+                        if (loc) {
+                            dayCoords.push([loc.lat, loc.lng]);
+                            const marker = L.marker([loc.lat, loc.lng], { icon: createNumberedIcon(globalIndex, dCol) });
+                            marker.bindPopup(getPopupContent({...loc, isItinerary: true}), { 
+                                className: 'custom-popup', closeButton: false, minWidth: 260, maxWidth: 260 
+                            });
+                            markersData.push({ marker: marker, type: loc.type, loc: loc });
+                        }
+                        globalIndex++;
+                    });
+
+                    // 같은 날 마커들을 점선으로 연결
+                    if (dayCoords.length >= 2) {
+                        const polyline = L.polyline(dayCoords, {
+                            color: dCol,
+                            weight: 3,
+                            dashArray: '10, 8',
+                            opacity: 0.7
+                        }).addTo(map);
+                        itineraryPolylines.push(polyline);
+                    }
                 });
-                markersData.push({ marker: marker, type: loc.type, loc: loc });
-            });
+            } else {
+                // 기본 마커 렌더링
+                allLocations.forEach(loc => {
+                    const marker = L.marker([loc.lat, loc.lng], { icon: icons[loc.type] });
+                    marker.bindPopup(getPopupContent(loc), { 
+                        className: 'custom-popup', closeButton: false, minWidth: 260, maxWidth: 260 
+                    });
+                    markersData.push({ marker: marker, type: loc.type, loc: loc });
+                });
+            }
 
-            // 필터 및 리스트 갱신
             updateFilters();
+            if(window.rebuildItineraryUI) window.rebuildItineraryUI();
         };
 
         // --- 📍 마커 추가 이벤트 로직 ---
@@ -784,7 +911,6 @@
         let isSortAsc = true;
 
         const updateFilters = () => {
-            // 버튼 UI 스타일 업데이트 (일반 유형 및 전체 버튼)
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 const type = btn.dataset.type;
                 const isAllBtn = type === 'all';
@@ -803,15 +929,21 @@
                 }
             });
 
-            // 지도 마커 표시/숨김 처리 (유형 교집합 + 즐겨찾기 교집합)
-            markersData.forEach(item => {
-                const typeMatch = activeTypes.includes(item.type);
-                const favMatch = isFavoriteFilterActive ? favorites.includes(item.loc.name) : true;
+            const isItineraryMap = (activeMainTab === 'btn-itinerary' && itineraryMode === 'view-map');
 
-                if (typeMatch && favMatch) {
+            markersData.forEach(item => {
+                if (isItineraryMap) {
+                    // 일정 뷰어 지도에서는 무조건 모든 항목을 다 표시한다 (필터 무시)
                     if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
                 } else {
-                    if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
+                    const typeMatch = activeTypes.includes(item.type);
+                    const favMatch = isFavoriteFilterActive ? favorites.includes(item.loc.name) : true;
+
+                    if (typeMatch && favMatch) {
+                        if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
+                    } else {
+                        if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
+                    }
                 }
             });
 
@@ -940,15 +1072,20 @@
                     <td class="px-3 py-4 text-sm text-gray-500 break-keep">${loc.address || '-'}</td>
                     <td class="px-3 py-4 text-sm text-gray-500 break-keep">${loc.hours || '-'}</td>
                     <td class="px-3 py-4 text-sm text-gray-500 break-keep">${loc.closed || '-'}</td>
-                    <td class="whitespace-nowrap py-4 pl-3 pr-2 text-center text-sm font-medium">
-                        <button type="button" onclick="navigateToMapWithLocation('${encodedName}')" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-500 hover:bg-blue-600 shadow-sm cursor-pointer">
-                            📍 보기
-                        </button>
-                    </td>
-                    <td class="whitespace-nowrap py-4 pl-2 pr-4 text-center text-sm font-medium sm:pr-6">
-                        <a href="${naverMapUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-[#03C75A] hover:bg-[#02b351] shadow-sm">
-                            지도 ↗
-                        </a>
+                    <td class="whitespace-nowrap py-4 pl-3 pr-2 text-center text-sm font-medium" colspan="2">
+                        <div class="flex flex-col gap-1.5 items-center w-full max-w-[90px] mx-auto">
+                            <button type="button" onclick="openItineraryModal(event, '${encodedName}')" class="w-full inline-flex justify-center items-center px-2.5 py-1.5 border border-gray-300 text-xs font-bold rounded text-gray-700 bg-white hover:bg-gray-50 shadow-sm cursor-pointer whitespace-nowrap">
+                                🗓️ 일정에 추가
+                            </button>
+                            <div class="flex items-center justify-between gap-1 w-full">
+                                <button type="button" onclick="navigateToMapWithLocation('${encodedName}')" class="flex-1 inline-flex justify-center items-center px-1 py-1 border border-transparent text-[10px] font-medium rounded text-blue-700 bg-blue-50 hover:bg-blue-100 shadow-sm cursor-pointer whitespace-nowrap">
+                                    📍 맵
+                                </button>
+                                <a href="${naverMapUrl}" target="_blank" rel="noopener noreferrer" class="flex-1 inline-flex justify-center items-center px-1 py-1 border border-transparent text-[10px] font-medium rounded text-white bg-[#03C75A] hover:bg-[#02b351] shadow-sm whitespace-nowrap">
+                                    네이버↗
+                                </a>
+                            </div>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -977,11 +1114,18 @@
 
             mapView.classList.remove('hidden');
             listView.classList.add('hidden');
+            document.getElementById('itinerary-view').classList.add('hidden');
 
             btnMap.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
             btnMap.classList.remove('text-gray-500', 'font-medium', 'hover:text-gray-800');
             btnList.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
             btnList.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+            
+            const btnIti = document.getElementById('btn-itinerary');
+            if(btnIti) {
+                btnIti.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
+                btnIti.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+            }
 
             // 지도 사이즈 재계산 후 해당 위치로 이동 및 팝업 열기
             setTimeout(() => {
@@ -1001,35 +1145,46 @@
             }, 100);
         };
 
-        // --- 토글 버튼 로직 ---
+        // --- 탭 전환 글로벌 함수 ---
+        window.switchTab = (tabId) => {
+            activeMainTab = tabId;
+            updateItineraryModeUI(); // 탭 전환 시 UI 모드 최신화
+            const tabs = ['btn-map', 'btn-list', 'btn-itinerary'];
+            const views = ['map', 'list-view', 'itinerary-view'];
+
+            tabs.forEach((id, index) => {
+                const btn = document.getElementById(id);
+                const view = document.getElementById(views[index]);
+                if (!btn || !view) return;
+
+                if (id === tabId) {
+                    btn.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+                    btn.classList.remove('text-gray-500', 'font-medium', 'hover:text-gray-800');
+                    view.classList.remove('hidden');
+                } else {
+                    btn.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
+                    btn.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+                    view.classList.add('hidden');
+                }
+            });
+
+            if (tabId === 'btn-map') {
+                rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
+                setTimeout(() => { map.invalidateSize(); }, 50);
+            } else if (tabId === 'btn-list') {
+                rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
+            } else if (tabId === 'btn-itinerary') {
+                if (window.rebuildItineraryUI) window.rebuildItineraryUI();
+            }
+        };
+
         const btnMap = document.getElementById('btn-map');
         const btnList = document.getElementById('btn-list');
-        const mapView = document.getElementById('map');
-        const listView = document.getElementById('list-view');
-
-        btnMap.addEventListener('click', () => {
-            mapView.classList.remove('hidden');
-            listView.classList.add('hidden');
-            
-            btnMap.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
-            btnMap.classList.remove('text-gray-500', 'font-medium', 'hover:text-gray-800');
-            
-            btnList.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
-            btnList.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
-            
-            setTimeout(() => { map.invalidateSize(); }, 50);
-        });
-
-        btnList.addEventListener('click', () => {
-            listView.classList.remove('hidden');
-            mapView.classList.add('hidden');
-            
-            btnList.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
-            btnList.classList.remove('text-gray-500', 'font-medium', 'hover:text-gray-800');
-            
-            btnMap.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
-            btnMap.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
-        });
+        const btnItinerary = document.getElementById('btn-itinerary');
+        
+        btnMap.addEventListener('click', () => switchTab('btn-map'));
+        btnList.addEventListener('click', () => switchTab('btn-list'));
+        if (btnItinerary) btnItinerary.addEventListener('click', () => switchTab('btn-itinerary'));
 
         // 브라우저 리사이즈 시 지도 크기 동기화
         window.addEventListener('resize', () => {
@@ -1046,6 +1201,468 @@
                 map.fitBounds(group.getBounds().pad(0.1));
             }
         }, 800);
+
+    
+        // --- 일정 관리를 위한 전역 함수 및 로직 ---
+        let pendingItineraryLocation = null;
+
+        window.openItineraryModal = (e, encodedName) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (!itinerary || !itinerary.totalDays) {
+                alert("아직 생성된 일정이 없습니다. [일정] 탭에서 일정을 먼저 만들어주세요!");
+                switchTab('btn-itinerary');
+                return;
+            }
+
+            pendingItineraryLocation = decodeURIComponent(encodedName);
+            
+            const dayBtnsContainer = document.getElementById('itinerary-day-buttons');
+            dayBtnsContainer.innerHTML = '';
+            
+            for (let i = 0; i < itinerary.totalDays; i++) {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold rounded-lg transition-colors border border-blue-200";
+                btn.textContent = `Day ${i + 1} 에 추가하기`;
+                btn.onclick = () => {
+                    addLocationToItinerary(i, pendingItineraryLocation);
+                    document.getElementById('itinerary-select-modal').classList.add('hidden');
+                };
+                dayBtnsContainer.appendChild(btn);
+            }
+
+            document.getElementById('itinerary-select-modal').classList.remove('hidden');
+        };
+
+        document.getElementById('btn-close-itinerary-modal').addEventListener('click', () => {
+            pendingItineraryLocation = null;
+            document.getElementById('itinerary-select-modal').classList.add('hidden');
+        });
+
+        const addLocationToItinerary = (dayIndex, locName) => {
+            const allLocations = [...locations, ...customLocations];
+            const locObj = allLocations.find(l => l.name === locName);
+            if (!locObj) return;
+
+            itinerary.days[dayIndex].items.push({
+                id: 'item-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                name: locObj.name,
+                type: locObj.type
+            });
+
+                        saveItinerary();
+            if (window.rebuildItineraryUI) rebuildItineraryUI();
+
+            // 지도에서 추가 시 일정 뷰로 자동 튕기기
+            switchTab('btn-itinerary');
+
+            alert(`Day ${dayIndex + 1} 일정에 [${locObj.name}] 추가되었습니다!`);
+        };
+
+        window.jumpToMapForAdding = () => {
+            switchTab('btn-map');
+            setTimeout(() => {
+                alert("지도나 리스트에서 장소를 찾아 [🗓️ 일정에 추가] 버튼을 눌러주세요!");
+            }, 300);
+        };
+
+        
+        window.removeLocationFromItinerary = (dayIndex, itemId) => {
+            // 커스텀 confirm 없이 즉시 삭제 처리
+            itinerary.days[dayIndex].items = itinerary.days[dayIndex].items.filter(item => item.id !== itemId);
+            saveItinerary();
+            if (window.rebuildItineraryUI) rebuildItineraryUI();
+        };
+
+        window.resetItinerary = () => {
+            document.getElementById('itinerary-reset-modal').classList.remove('hidden');
+        };
+
+        const btnConfirmResetIti = document.getElementById('btn-confirm-reset-itinerary');
+        if(btnConfirmResetIti) {
+            btnConfirmResetIti.addEventListener('click', () => {
+                itinerary = { totalDays: 0, days: [] };
+                saveItinerary();
+                document.getElementById('itinerary-reset-modal').classList.add('hidden');
+                if (window.rebuildItineraryUI) rebuildItineraryUI();
+            });
+        }
+
+        // --- 다중 추가 (Multi-add) 로직 ---
+        let pendingMultiAddDayIndex = 0;
+        let selectedMultiAddLocations = new Set();
+        let multiAddSearchQuery = '';
+
+        window.openMultiAddModal = (dayIndex) => {
+            pendingMultiAddDayIndex = dayIndex;
+            selectedMultiAddLocations.clear();
+            multiAddSearchQuery = '';
+            document.getElementById('multi-add-search').value = '';
+            
+            document.getElementById('multi-add-title').textContent = `Day ${dayIndex + 1} 에 여러 장소 추가`;
+            document.getElementById('itinerary-multi-add-modal').classList.remove('hidden');
+            
+            renderMultiAddList();
+            updateMultiAddCount();
+        };
+
+        window.closeMultiAddModal = () => {
+            document.getElementById('itinerary-multi-add-modal').classList.add('hidden');
+        };
+
+        const renderMultiAddList = () => {
+            const container = document.getElementById('multi-add-list');
+            container.innerHTML = '';
+            
+            const allLocations = [...locations, ...customLocations];
+            
+            // 필터링 적용
+            const query = multiAddSearchQuery.toLowerCase();
+            const filtered = allLocations.filter(l => l.name.toLowerCase().includes(query) || (l.address && l.address.toLowerCase().includes(query)));
+
+            filtered.forEach(loc => {
+                const isSelected = selectedMultiAddLocations.has(loc.name);
+                
+                const box = document.createElement('div');
+                box.className = `p-3 border-b flex items-center gap-3 cursor-pointer hover:bg-blue-50 transition-colors ${isSelected ? 'bg-blue-50 border-blue-200' : 'border-gray-100'}`;
+                
+                box.onclick = () => {
+                    if (selectedMultiAddLocations.has(loc.name)) {
+                        selectedMultiAddLocations.delete(loc.name);
+                    } else {
+                        selectedMultiAddLocations.add(loc.name);
+                    }
+                    renderMultiAddList(); // 하이라이트 토글용 재렌더링
+                    updateMultiAddCount();
+                };
+
+                // 아이콘 혹은 체크박스 UI
+                box.innerHTML = `
+                    <div class="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 bg-white text-transparent'}">
+                        ${isSelected ? '✓' : ''}
+                    </div>
+                    <div class="flex-1 flex flex-col justify-center overflow-hidden">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-sm text-gray-800 truncate">${loc.name}</span>
+                            <span class="text-[10px] ${badgeColors[loc.type]} px-1.5 py-0.5 rounded-full shrink-0">${labels[loc.type]}</span>
+                        </div>
+                        <span class="text-xs text-gray-400 truncate mt-0.5">${loc.address || ''}</span>
+                    </div>
+                `;
+                
+                container.appendChild(box);
+            });
+        };
+
+        const updateMultiAddCount = () => {
+            const btnSpan = document.getElementById('multi-add-count');
+            if(btnSpan) btnSpan.textContent = selectedMultiAddLocations.size;
+        };
+
+        const multiAddInput = document.getElementById('multi-add-search');
+        if (multiAddInput) {
+            // 입력할 때마다 필터링
+            multiAddInput.addEventListener('input', (e) => {
+                multiAddSearchQuery = e.target.value.trim();
+                renderMultiAddList();
+            });
+        }
+
+        const btnConfirmMultiAdd = document.getElementById('btn-confirm-multi-add');
+        if (btnConfirmMultiAdd) {
+            btnConfirmMultiAdd.addEventListener('click', () => {
+                if(selectedMultiAddLocations.size === 0) {
+                    alert('선택된 장소가 없습니다.');
+                    return;
+                }
+
+                const allLocations = [...locations, ...customLocations];
+                
+                // Set에 담긴 이름들을 기반해 실제 객체 찾아 itinerary에 푸시
+                selectedMultiAddLocations.forEach(name => {
+                    const locObj = allLocations.find(l => l.name === name);
+                    if (locObj) {
+                        itinerary.days[pendingMultiAddDayIndex].items.push({
+                            id: 'item-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+                            name: locObj.name,
+                            type: locObj.type
+                        });
+                    }
+                });
+
+                saveItinerary();
+                closeMultiAddModal();
+                if (window.rebuildItineraryUI) rebuildItineraryUI();
+                
+                // 토스트 띄우기 대용으로 시간 지연 알림 호출
+                setTimeout(() => {
+                    alert(`Day ${pendingMultiAddDayIndex + 1} 일정에 ${selectedMultiAddLocations.size}개 장소가 추가되었습니다!`);
+                }, 100);
+            });
+        }
+
+        
+        let itineraryMode = 'edit'; // 'edit', 'view-list', 'view-map'
+        let activeMainTab = 'btn-map';
+
+        const updateItineraryModeUI = () => {
+            const btnEdit = document.getElementById('btn-mode-edit');
+            const btnList = document.getElementById('btn-mode-view-list');
+            const btnMap = document.getElementById('btn-mode-view-map');
+            const subHeader = document.getElementById('itinerary-sub-header');
+            const itiView = document.getElementById('itinerary-view');
+            const itiContainer = document.getElementById('itinerary-container');
+            const mainMap = document.getElementById('map');
+
+            if (activeMainTab !== 'btn-itinerary' || !itinerary || !itinerary.totalDays) {
+                subHeader.classList.add('hidden');
+            } else {
+                subHeader.classList.remove('hidden');
+            }
+
+            // 초기화
+            [btnEdit, btnList, btnMap].forEach(b => {
+                if(!b) return;
+                b.className = 'px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200';
+            });
+
+            if (itineraryMode === 'edit') {
+                if(btnEdit) btnEdit.className = 'px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
+                itiView.classList.add('flex-1', 'h-full');
+                itiContainer.classList.remove('hidden');
+                if(activeMainTab === 'btn-itinerary') mainMap.classList.add('hidden');
+            } else if (itineraryMode === 'view-list') {
+                if(btnList) btnList.className = 'px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
+                itiView.classList.add('flex-1', 'h-full');
+                itiContainer.classList.remove('hidden');
+                if(activeMainTab === 'btn-itinerary') mainMap.classList.add('hidden');
+            } else if (itineraryMode === 'view-map') {
+                if(btnMap) btnMap.className = 'px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
+                itiView.classList.remove('flex-1', 'h-full');
+                itiContainer.classList.add('hidden');
+                if(activeMainTab === 'btn-itinerary') mainMap.classList.remove('hidden');
+            }
+            
+            if(activeMainTab === 'btn-itinerary' && (itineraryMode === 'view-map' || itineraryMode === 'view-list' || itineraryMode === 'edit')) {
+                rebuildMarkers();
+                if(itineraryMode === 'view-map') {
+                    setTimeout(() => map.invalidateSize(), 50);
+                }
+            }
+        };
+
+        // 서브 헤더 이벤트 리스너 (module 스크립트는 DOMContentLoaded 이후 실행되므로 직접 등록)
+        document.getElementById('btn-mode-edit').addEventListener('click', () => { itineraryMode = 'edit'; updateItineraryModeUI(); rebuildItineraryUI(); });
+        document.getElementById('btn-mode-view-list').addEventListener('click', () => { itineraryMode = 'view-list'; updateItineraryModeUI(); rebuildItineraryUI(); });
+        document.getElementById('btn-mode-view-map').addEventListener('click', () => { itineraryMode = 'view-map'; updateItineraryModeUI(); rebuildItineraryUI(); });
+
+        window.addNewDayToItinerary = () => {
+            if(itinerary.totalDays >= 10) {
+                alert("일정은 최대 10일까지만 만들 수 있습니다.");
+                return;
+            }
+            itinerary.days.push({ items: [] });
+            itinerary.totalDays += 1;
+            saveItinerary();
+            rebuildItineraryUI();
+        };
+
+        window.deleteDayFromItinerary = (dayIndex) => {
+            if(confirm(`Day ${dayIndex + 1} 전체를 삭제하시겠습니까?`)) {
+                itinerary.days.splice(dayIndex, 1);
+                itinerary.totalDays -= 1;
+                saveItinerary();
+                rebuildItineraryUI();
+            }
+        };
+
+        let sortableInstances = [];
+        window.rebuildItineraryUI = () => {
+            const container = document.getElementById('itinerary-container');
+            if(!container) return;
+            
+            sortableInstances.forEach(inst => inst.destroy());
+            sortableInstances = [];
+
+            if (!itinerary || !itinerary.totalDays || itinerary.totalDays === 0) {
+                container.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-center text-center p-6 pb-20">
+                        <div class="text-6xl mb-6">📅</div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">새로운 여정을 시작하세요</h2>
+                        <p class="text-gray-500 mb-8 max-w-xs text-sm">나만의 경주 일정을 직관적으로 관리해보세요!</p>
+                        
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center gap-4 w-full max-w-sm">
+                            <label class="text-sm font-semibold text-gray-700">며칠 동안 여행하시나요?</label>
+                            <div class="flex items-center justify-center gap-3">
+                                <button type="button" onclick="const p=document.getElementById('days-input'); if(p.value>1)p.value--" class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-lg">-</button>
+                                <input type="number" id="days-input" value="2" min="1" max="10" class="w-16 h-10 text-center text-xl font-bold border-none bg-gray-50 rounded-lg outline-none" readonly>
+                                <button type="button" onclick="const p=document.getElementById('days-input'); if(p.value<10)p.value++" class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-lg">+</button>
+                            </div>
+                            <span class="text-xs text-gray-400">최대 10일 (당일치기는 1일)</span>
+                            
+                            <button type="button" id="btn-create-itinerary" class="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md cursor-pointer transition-colors">
+                                이대로 일정 만들기
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('btn-create-itinerary').addEventListener('click', () => {
+                    const days = parseInt(document.getElementById('days-input').value, 10);
+                    itinerary = { totalDays: days, days: Array.from({length: days}, () => ({ items: [] })) };
+                    saveItinerary();
+                    rebuildItineraryUI();
+                });
+                return;
+            }
+
+            
+            let html = `
+                <div class="flex justify-between items-center mb-6 px-1 mt-2">
+                    <h2 class="text-xl font-extrabold text-gray-800 shrink-0">우리의 일정 🚗</h2>
+            `;
+            
+            if (itineraryMode === 'edit') {
+                html += `<button type="button" onclick="resetItinerary()" class="text-xs font-semibold px-3 py-1.5 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors shrink-0 outline-none">초기화</button>`;
+            }
+
+            html += `
+                </div>
+                <div class="flex flex-col gap-6 overflow-y-auto pb-8 no-scrollbar" id="itinerary-days-wrapper">
+            `;
+
+            for (let i = 0; i < itinerary.totalDays; i++) {
+                html += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                            <h3 class="font-bold text-gray-800 text-base">Day ${i + 1}</h3>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-medium text-gray-500 bg-white px-2 py-0.5 rounded-full shadow-sm">${itinerary.days[i].items.length} 장소</span>
+                `;
+                if (itineraryMode === 'edit') {
+                    html += `<button onclick="deleteDayFromItinerary(${i})" class="text-red-400 hover:text-red-600 px-1 py-0.5" title="이 일정 삭제">🗑️</button>`;
+                }
+                html += `
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <ul class="flex flex-col gap-2 min-h-[3.5rem] itinerary-sortable-list" data-day="${i}">
+                `;
+
+                itinerary.days[i].items.forEach((item, index) => {
+                    const viewClickAttr = (itineraryMode === 'view-list') ? `onclick="navigateToMapWithLocation('${encodeURIComponent(item.name).replace(/'/g, "%27")}'); switchTab('btn-map');"` : '';
+                    const cursorClass = (itineraryMode === 'view-list') ? 'cursor-pointer hover:shadow-md' : 'cursor-grab active:cursor-grabbing hover:bg-gray-100';
+
+                    html += `
+                        <li class="bg-gray-50 border border-gray-200 rounded-lg p-2.5 flex items-center gap-2.5 transition-all group ${cursorClass}" data-id="${item.id}" data-type="${item.type}" ${viewClickAttr}>
+                    `;
+                    
+                    if (itineraryMode === 'edit') {
+                        html += `
+                            <div class="text-gray-400 shrink-0 flex items-center drag-handle px-1">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M4.5 3.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m5-8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m5-8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/></svg>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                            <div class="w-6 h-6 rounded-full flex items-center justify-center bg-white border border-gray-300 shadow-sm shrink-0">
+                                <span class="text-[10px] font-bold text-gray-600">${index + 1}</span>
+                            </div>
+                            <div class="flex-1 font-semibold text-gray-800 text-sm truncate select-none">
+                                ${item.name}
+                            </div>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${badgeColors[item.type] || 'bg-gray-200 text-gray-800'} whitespace-nowrap shrink-0">
+                                ${labels[item.type] || '기타'}
+                            </span>
+                    `;
+
+                    if (itineraryMode === 'edit') {
+                        html += `
+                            <button type="button" onclick="removeLocationFromItinerary(${i}, '${item.id}')" class="text-gray-300 hover:text-red-500 transition-colors p-1" title="삭제">
+                                ✖
+                            </button>
+                        `;
+                    } else if (itineraryMode === 'view-list') {
+                       // 뷰 모드일 때는 클릭 피드백 힌트 (우측 화살표 등)
+                       html += `<span class="text-gray-400 text-xs">➡️</span>`;
+                    }
+
+                    html += `</li>`;
+                });
+
+                html += `</ul>`;
+
+                if (itineraryMode === 'edit') {
+                    html += `
+                        <div class="mt-2 flex gap-2 w-full">
+                            <div onclick="jumpToMapForAdding()" class="flex-1 border border-dashed border-blue-200 rounded-lg py-2.5 flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer hover:bg-blue-50 transition-colors group">
+                                <span class="text-blue-400 font-bold group-hover:text-blue-500 text-sm leading-none">➕</span>
+                                <span class="text-sm font-semibold text-blue-500 group-hover:text-blue-600 leading-none truncate">지도에서 추가</span>
+                            </div>
+                            <div onclick="openMultiAddModal(${i})" class="flex-1 border border-dashed border-green-200 rounded-lg py-2.5 flex flex-col sm:flex-row items-center justify-center gap-1.5 cursor-pointer hover:bg-green-50 transition-colors group">
+                                <span class="text-green-400 font-bold group-hover:text-green-500 text-sm leading-none">📋</span>
+                                <span class="text-sm font-semibold text-green-500 group-hover:text-green-600 leading-none truncate">리스트 다중 추가</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (itineraryMode === 'edit') {
+                html += `
+                    <button onclick="addNewDayToItinerary()" class="mt-2 w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-bold flex items-center justify-center gap-2 transition-colors">
+                        ➕ Day 추가하기
+                    </button>
+                `;
+            }
+
+            html += `</div>`;
+            container.innerHTML = html;
+
+
+            
+            document.querySelectorAll('.itinerary-sortable-list').forEach(listEl => {
+                const inst = new Sortable(listEl, {
+                    group: 'itinerary',
+                    handle: '.drag-handle',
+                    animation: 150,
+                    ghostClass: 'opacity-50',
+                    disabled: itineraryMode !== 'edit', // 편집 모드가 아닐 때는 드래그 비활성화
+                    onEnd: function () {
+                        updateItineraryFromDOM();
+                    }
+                });
+                sortableInstances.push(inst);
+            });
+        };
+
+        const updateItineraryFromDOM = () => {
+            const nextDays = [];
+            document.querySelectorAll('.itinerary-sortable-list').forEach(listEl => {
+                const items = [];
+                listEl.querySelectorAll('li').forEach(li => {
+                    items.push({
+                        id: li.getAttribute('data-id'),
+                        name: li.querySelector('.truncate').innerText.trim(),
+                        type: li.getAttribute('data-type')
+                    });
+                });
+                nextDays.push({ items: items });
+            });
+            itinerary.days = nextDays;
+            saveItinerary();
+            
+            // 번호를 재계산하기 위해 50ms 후 다시 그리기
+            setTimeout(() => rebuildItineraryUI(), 50);
+        };
 
     </script>
 </body>
