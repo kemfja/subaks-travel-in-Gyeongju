@@ -111,11 +111,38 @@
     <div id="add-modal" class="fixed inset-0 z-[1000] hidden bg-black bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
             <h2 class="text-xl font-bold mb-4">새 장소 추가 📍</h2>
+            
+            <!-- 장소 검색 영역 -->
+            <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <label class="block text-sm font-medium text-gray-700 mb-1">장소 검색 (선택)</label>
+                <div class="flex gap-2">
+                    <input type="text" id="search-query" placeholder="예: 불국사, 첨성대" class="flex-1 w-0 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    <button type="button" id="btn-search-place" class="px-3 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md transition-colors whitespace-nowrap">검색</button>
+                </div>
+                <!-- 검색 로딩 및 결과 안내 -->
+                <div id="search-status" class="mt-2 text-xs text-blue-500 font-medium hidden"></div>
+                <!-- 검색 결과 리스트 -->
+                <ul id="search-results" class="mt-2 text-sm flex flex-col gap-1 max-h-32 overflow-y-auto w-full"></ul>
+            </div>
+
+            <div class="flex items-center my-4">
+                <div class="flex-grow border-t border-gray-300"></div>
+                <span class="flex-shrink-0 mx-4 text-gray-400 text-xs text-center leading-none mt-[-2px]">수동 정보 입력</span>
+                <div class="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <!-- 이 버튼을 누르면 모달이 닫히고 지도 클릭 모드로 전환됨 -->
+            <button type="button" id="btn-map-pick" class="w-full mb-4 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors flex items-center justify-center gap-2">
+                <span>🎯 지도에서 눈썹 클릭으로 위치 선택</span>
+                <span id="map-pick-status" class="text-xs text-red-500 hidden">(위치 미지정)</span>
+            </button>
+
             <form id="add-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">장소명 *</label>
                     <input type="text" id="add-name" required placeholder="예: 나만의 비밀 식당" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
                 </div>
+                <input type="hidden" id="add-address" value="직접 추가한 핀 위치">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">구분 *</label>
@@ -533,24 +560,42 @@
         const addModal = document.getElementById('add-modal');
         const addForm = document.getElementById('add-form');
         const btnCancelAdd = document.getElementById('btn-cancel-add');
+        const searchInput = document.getElementById('search-query');
+        const btnSearchPlace = document.getElementById('btn-search-place');
+        const searchResults = document.getElementById('search-results');
+        const searchStatus = document.getElementById('search-status');
+        const btnMapPick = document.getElementById('btn-map-pick');
+        const mapPickStatus = document.getElementById('map-pick-status');
+        const addAddressHidden = document.getElementById('add-address');
 
+        // 장소 추가 버튼 클릭 시 바로 모달 띄우기 (흐름 변경)
         btnAddMarker.addEventListener('click', () => {
-            isAddMode = true;
-            addToast.classList.remove('hidden');
-            map.getContainer().style.cursor = 'crosshair';
+            addModal.classList.remove('hidden');
             
-            // 만약 리스트 화면이라면 지도로 자동 전환시킴
+            // 만약 리스트 화면이라면 지도로 자동 전환시킴 (위치 확인 편의성)
             if(document.getElementById('map').classList.contains('hidden')){
                 document.getElementById('btn-map').click();
             }
-        });
 
-        btnCancelAdd.addEventListener('click', () => {
-            addModal.classList.add('hidden');
-            addForm.reset();
+            // 초기화
             pendingLatLng = null;
+            mapPickStatus.classList.remove('hidden');
+            mapPickStatus.textContent = "(위치 미지정 - 지도 클릭 또는 검색 필수)";
+            mapPickStatus.classList.replace('text-blue-600', 'text-red-500');
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            searchStatus.classList.add('hidden');
         });
 
+        // 지도에서 직접 선택하기 버튼 (모달 숨기고 맵 클릭 모드 진입)
+        btnMapPick.addEventListener('click', () => {
+            addModal.classList.add('hidden');
+            isAddMode = true;
+            addToast.classList.remove('hidden');
+            map.getContainer().style.cursor = 'crosshair';
+        });
+
+        // 지도 클릭 이벤트 (직접 선택 모드일 때만 동작)
         map.on('click', function(e) {
             if(!isAddMode) return;
             
@@ -559,14 +604,106 @@
             addToast.classList.add('hidden');
             map.getContainer().style.cursor = '';
             
-            // 클릭한 위치를 물고 정보 입력 모달 띄우기
+            // 위치 확정 후 텍스트/스타일 변경 및 폼 다시 띄우기
+            mapPickStatus.textContent = "(위치 지정 완료 ✅)";
+            mapPickStatus.classList.replace('text-red-500', 'text-blue-600');
+            addAddressHidden.value = "지도에서 직접 선택한 위치"; // 주소 임시 저장 기본값
+            
             addModal.classList.remove('hidden');
             setTimeout(() => document.getElementById('add-name').focus(), 100);
         });
 
+        // 모달 닫기
+        btnCancelAdd.addEventListener('click', () => {
+            addModal.classList.add('hidden');
+            addForm.reset();
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            searchStatus.classList.add('hidden');
+            pendingLatLng = null;
+            
+            // 혹시나 지도 픽 모드에서 취소한 경우도 리셋
+            isAddMode = false;
+            addToast.classList.add('hidden');
+            map.getContainer().style.cursor = '';
+        });
+
+        // 장소 검색 모듈 (OpenStreetMap Nominatim API)
+        btnSearchPlace.addEventListener('click', async () => {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            searchStatus.textContent = "검색 중...";
+            searchStatus.className = "mt-2 text-xs text-blue-500 font-medium";
+            searchResults.innerHTML = '';
+
+            try {
+                // 한국 지역(countrycodes=kr)에서 검색, limit는 5개로 제한
+                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&addressdetails=1&countrycodes=kr&limit=5`;
+                const response = await fetch(url, {
+                    headers: { 'Accept-Language': 'ko-KR,ko;q=0.9' }
+                });
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    searchStatus.textContent = "검색 결과가 없습니다. 도로명 주소나 상호명을 다시 확인해주세요.";
+                    searchStatus.className = "mt-2 text-xs text-red-500 font-medium";
+                } else {
+                    searchStatus.classList.add('hidden');
+                    data.forEach(item => {
+                        const li = document.createElement('li');
+                        li.className = "cursor-pointer p-2 hover:bg-gray-100 rounded border border-transparent hover:border-gray-200 transition-colors";
+                        
+                        // 상호명이 있으면 상호명 우선, 없으면 주소 중 가장 앞부분 사용
+                        const displayName = item.name || item.display_name.split(',')[0];
+                        const fullAddress = item.display_name;
+                        
+                        li.innerHTML = `
+                            <div class="font-semibold text-gray-800">${displayName}</div>
+                            <div class="text-xs text-gray-500 line-clamp-1">${fullAddress}</div>
+                        `;
+                        
+                        li.addEventListener('click', () => {
+                            // 항목 클릭 시 데이터 세팅
+                            pendingLatLng = L.latLng(parseFloat(item.lat), parseFloat(item.lon));
+                            document.getElementById('add-name').value = displayName;
+                            addAddressHidden.value = fullAddress; // API에서 가져온 실제 주소 저장
+                            
+                            // UI 피드백 표시
+                            mapPickStatus.textContent = `(검색 위치 선택됨: ${displayName} ✅)`;
+                            mapPickStatus.classList.replace('text-red-500', 'text-blue-600');
+                            mapPickStatus.classList.remove('hidden');
+                            
+                            // 검색 리스트 비우기
+                            searchResults.innerHTML = '';
+                        });
+                        searchResults.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                searchStatus.textContent = "검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+                searchStatus.className = "mt-2 text-xs text-red-500 font-medium";
+                console.error(err);
+            }
+        });
+        
+        // 엔터키 리로드 방지 및 검색 연결
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnSearchPlace.click();
+            }
+        });
+
+        // 폼 제출 (저장)
         addForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
+            if (!pendingLatLng) {
+                alert("장소를 검색해서 결과를 선택하거나, 하단의 지도 아이콘을 눌러 위치를 지정해야 합니다!");
+                return;
+            }
+
             const nameVal = document.getElementById('add-name').value.trim();
             if(!nameVal) return;
 
@@ -577,29 +714,27 @@
                 lng: pendingLatLng.lng,
                 type: document.getElementById('add-type').value,
                 desc: document.getElementById('add-desc').value || '',
-                address: "직접 추가한 핀 위치",
+                address: addAddressHidden.value || "직접 추가한 핀 위치",
                 hours: document.getElementById('add-hours').value || '-',
                 closed: document.getElementById('add-closed').value || '-',
                 isCustom: true // 커스텀 장소 식별값
             };
 
             customLocations.push(newLoc);
-            saveCustomLocations();
+            saveCustomLocations(); // Firebase 연동 함수 트리거
             
+            // 모달 및 변수 리셋
             addModal.classList.add('hidden');
             addForm.reset();
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            searchStatus.classList.add('hidden');
             pendingLatLng = null;
 
-            rebuildMarkers();
-            
-            // 방금 추가한 마커로 부드럽게 이동하고 팝업 열기
+            // 로컬 임시 UI 업데이트 (구 rebuildMarkers 호출 등은 onSnapshot이 자동으로 해줌)
+            // Firebase가 저장 후 onSnapshot을 트리거하기 때문
+            // 방금 추가한 마커로 부드럽게 이동
             map.flyTo([newLoc.lat, newLoc.lng], 15, { animate: true });
-            setTimeout(() => {
-                const addedMarkerData = markersData.find(m => m.loc.name === newLoc.name);
-                if(addedMarkerData && map.hasLayer(addedMarkerData.marker)) {
-                    addedMarkerData.marker.openPopup();
-                }
-            }, 600);
         });
 
         // --- 필터링 상태 관리 및 로직 ---
