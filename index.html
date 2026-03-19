@@ -77,22 +77,21 @@
     <div id="map" class="flex-1 w-full relative z-10"></div>
 
     <!-- List Container -->
-    <div id="list-view" class="hidden overflow-y-auto flex-1 w-full bg-white z-20">
-        <div class="max-w-7xl mx-auto p-6">
-            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                <table class="min-w-full divide-y divide-gray-300">
+    <div id="list-view" class="hidden flex-1 w-full bg-transparent z-20 flex-col overflow-hidden h-full">
+        <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-full flex flex-col min-h-0">
+            <div class="bg-white shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg flex-1 overflow-y-auto relative">
+                <table class="min-w-full divide-y divide-gray-300 border-collapse">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th scope="col" class="py-3.5 pl-4 pr-2 text-center text-sm font-semibold text-gray-400 sm:pl-6 w-12" title="즐겨찾기">★</th>
-                            <th scope="col" class="px-2 py-3.5 text-left text-sm font-semibold text-gray-900 w-16">번호</th>
-                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none" data-sort="type">구분 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
-                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-48 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none" data-sort="name">장소명 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
-                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none" data-sort="address">주소 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
-                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-32">운영 시간</th>
-                            <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24">휴무일</th>
-                            <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 w-32">
-                                <span class="sr-only">네이버 지도</span>
-                            </th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 py-3.5 pl-4 pr-2 text-center text-sm font-semibold text-gray-400 sm:pl-6 w-12 border-b border-gray-200 shadow-sm" title="즐겨찾기">★</th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-2 py-3.5 text-left text-sm font-semibold text-gray-900 w-16 border-b border-gray-200 shadow-sm">번호</th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none border-b border-gray-200 shadow-sm" data-sort="type">구분 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-48 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none border-b border-gray-200 shadow-sm" data-sort="name">장소명 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-200 transition-colors sort-header select-none border-b border-gray-200 shadow-sm" data-sort="address">주소 <span class="sort-icon text-gray-400 text-xs ml-1"></span></th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-32 border-b border-gray-200 shadow-sm">운영 시간</th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 px-3 py-3.5 text-left text-sm font-semibold text-gray-900 w-24 border-b border-gray-200 shadow-sm">휴무일</th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 py-3.5 pl-3 pr-2 text-center text-sm font-semibold text-gray-900 w-20 border-b border-gray-200 shadow-sm">지도</th>
+                            <th scope="col" class="sticky top-0 z-20 bg-gray-50 bg-opacity-100 py-3.5 pl-2 pr-4 sm:pr-6 text-center text-sm font-semibold text-gray-900 w-24 border-b border-gray-200 shadow-sm">네이버 이동</th>
                         </tr>
                     </thead>
                     <tbody id="list-tbody" class="divide-y divide-gray-200 bg-white">
@@ -706,7 +705,12 @@
                     <td class="px-3 py-4 text-sm text-gray-500 min-w-[200px]">${loc.address || '-'}</td>
                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${loc.hours || '-'}</td>
                     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${loc.closed || '-'}</td>
-                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                    <td class="whitespace-nowrap py-4 pl-3 pr-2 text-center text-sm font-medium">
+                        <button type="button" onclick="navigateToMapWithLocation('${encodedName}')" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-500 hover:bg-blue-600 shadow-sm cursor-pointer">
+                            📍 보기
+                        </button>
+                    </td>
+                    <td class="whitespace-nowrap py-4 pl-2 pr-4 text-center text-sm font-medium sm:pr-6">
                         <a href="${naverMapUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-[#03C75A] hover:bg-[#02b351] shadow-sm">
                             지도 ↗
                         </a>
@@ -718,6 +722,45 @@
 
         // 초기화 시 전체 렌더링 시작 (rebuildMarkers가 updateFilters, renderList를 연쇄 호출함)
         rebuildMarkers();
+
+        // --- 리스트에서 지도로 이동하는 글로벌 함수 ---
+        window.navigateToMapWithLocation = (encodedName) => {
+            const name = decodeURIComponent(encodedName);
+            const allLocations = [...locations, ...customLocations];
+            const targetLoc = allLocations.find(loc => loc.name === name);
+            if (!targetLoc) return;
+
+            // 지도 뷰로 전환
+            const mapView = document.getElementById('map');
+            const listView = document.getElementById('list-view');
+            const btnMap = document.getElementById('btn-map');
+            const btnList = document.getElementById('btn-list');
+
+            mapView.classList.remove('hidden');
+            listView.classList.add('hidden');
+
+            btnMap.classList.add('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+            btnMap.classList.remove('text-gray-500', 'font-medium', 'hover:text-gray-800');
+            btnList.classList.add('text-gray-500', 'font-medium', 'hover:text-gray-800');
+            btnList.classList.remove('bg-white', 'shadow-sm', 'font-bold', 'text-gray-800');
+
+            // 지도 사이즈 재계산 후 해당 위치로 이동 및 팝업 열기
+            setTimeout(() => {
+                map.invalidateSize();
+                map.flyTo([targetLoc.lat, targetLoc.lng], 17, { animate: true, duration: 1.0 });
+
+                setTimeout(() => {
+                    const targetMarkerData = markersData.find(m => m.loc.name === name);
+                    if (targetMarkerData) {
+                        // 마커가 필터에 의해 숨겨져 있으면 지도에 추가
+                        if (!map.hasLayer(targetMarkerData.marker)) {
+                            map.addLayer(targetMarkerData.marker);
+                        }
+                        targetMarkerData.marker.openPopup();
+                    }
+                }, 800);
+            }, 100);
+        };
 
         // --- 토글 버튼 로직 ---
         const btnMap = document.getElementById('btn-map');
