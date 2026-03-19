@@ -103,8 +103,9 @@
     </div>
 
     <!-- Add Marker Toast -->
-    <div id="add-toast" class="fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[500] bg-blue-600 text-white px-6 py-3 rounded-full shadow-lg text-sm font-bold hidden pointer-events-none transition-all">
-        지도에서 마커를 추가할 위치를 클릭해주세요! 📍
+    <div id="add-toast" class="fixed top-[100px] left-1/2 transform -translate-x-1/2 z-[500] bg-blue-600 text-white pl-6 pr-2 py-2 rounded-full shadow-lg text-sm font-bold hidden flex items-center justify-between gap-4 transition-all">
+        <span>지도에서 위치를 클릭해주세요! 📍</span>
+        <button id="btn-cancel-map-pick" class="bg-blue-800 hover:bg-blue-900 text-white text-xs px-3 py-1.5 rounded-full transition-colors cursor-pointer pointer-events-auto shrink-0 flex items-center gap-1 font-medium">돌아가기 ↩</button>
     </div>
 
     <!-- Add Marker Modal -->
@@ -118,6 +119,7 @@
                 <div class="flex gap-2">
                     <input type="text" id="search-query" placeholder="예: 불국사, 첨성대" class="flex-1 w-0 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none">
                     <button type="button" id="btn-search-place" class="px-3 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md transition-colors whitespace-nowrap">검색</button>
+                    <button type="button" id="btn-reset-search" class="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors whitespace-nowrap">초기화</button>
                 </div>
                 <!-- 검색 로딩 및 결과 안내 -->
                 <div id="search-status" class="mt-2 text-xs text-blue-500 font-medium hidden"></div>
@@ -133,7 +135,7 @@
 
             <!-- 이 버튼을 누르면 모달이 닫히고 지도 클릭 모드로 전환됨 -->
             <button type="button" id="btn-map-pick" class="w-full mb-4 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-md transition-colors flex items-center justify-center gap-2">
-                <span>🎯 지도에서 눈썹 클릭으로 위치 선택</span>
+                <span>🎯 지도에서 클릭으로 위치 선택</span>
                 <span id="map-pick-status" class="text-xs text-red-500 hidden">(위치 미지정)</span>
             </button>
 
@@ -628,6 +630,37 @@
             map.getContainer().style.cursor = '';
         });
 
+        // 지도 직접 선택 취소 버튼 (토스트 내장)
+        const btnCancelMapPick = document.getElementById('btn-cancel-map-pick');
+        if (btnCancelMapPick) {
+            btnCancelMapPick.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // 지도 클릭 모드 취소 후 모달로 원복
+                isAddMode = false;
+                addToast.classList.add('hidden');
+                map.getContainer().style.cursor = '';
+                addModal.classList.remove('hidden');
+            });
+        }
+
+        // 검색 초기화 버튼 로직
+        const btnResetSearch = document.getElementById('btn-reset-search');
+        if (btnResetSearch) {
+            btnResetSearch.addEventListener('click', () => {
+                searchInput.value = '';
+                searchResults.innerHTML = '';
+                searchStatus.classList.add('hidden');
+                document.getElementById('add-name').value = '';
+                addAddressHidden.value = '직접 추가한 핀 위치';
+                pendingLatLng = null;
+                
+                mapPickStatus.textContent = "(위치 미지정 - 지도 클릭 또는 검색 필수)";
+                mapPickStatus.classList.replace('text-blue-600', 'text-red-500');
+                mapPickStatus.classList.remove('hidden');
+            });
+        }
+
         // 장소 검색 모듈 (OpenStreetMap Nominatim API)
         btnSearchPlace.addEventListener('click', async () => {
             const query = searchInput.value.trim();
@@ -638,8 +671,12 @@
             searchResults.innerHTML = '';
 
             try {
-                // 한국 지역(countrycodes=kr)에서 검색, limit는 5개로 제한
-                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&addressdetails=1&countrycodes=kr&limit=5`;
+                // 현재 지도가 보고 있는 화면 영역(Bounds) 가져오기
+                const bounds = map.getBounds();
+                const viewbox = `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
+
+                // 한국 지역(countrycodes=kr)에서 검색, limit는 5개, 현재 화면 중심(viewbox) 우선 검색(bounded=0)
+                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&addressdetails=1&countrycodes=kr&viewbox=${viewbox}&bounded=0&limit=5`;
                 const response = await fetch(url, {
                     headers: { 'Accept-Language': 'ko-KR,ko;q=0.9' }
                 });
