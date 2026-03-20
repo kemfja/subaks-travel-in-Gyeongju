@@ -1270,7 +1270,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
             for (let i = 0; i < itinerary.totalDays; i++) {
                 html += `
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col shrink-0">
                         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                             <h3 class="font-bold text-gray-800 text-base">Day ${i + 1}</h3>
                             <div class="flex items-center gap-2">
@@ -1353,7 +1353,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
             if (itineraryMode === 'edit') {
                 html += `
-                    <button onclick="addNewDayToItinerary()" class="mt-2 w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-bold flex items-center justify-center gap-2 transition-colors">
+                    <button onclick="addNewDayToItinerary()" class="mt-2 w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-400 font-bold flex items-center justify-center gap-2 transition-colors shrink-0">
                         ➕ Day 추가하기
                     </button>
                 `;
