@@ -1,21 +1,15 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-        // 사용자 제공 Firebase 설정
-        const firebaseConfig = {
-            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-            authDomain: "subak-map.firebaseapp.com",
-            projectId: "subak-map",
-            storageBucket: "subak-map.firebasestorage.app",
-            messagingSenderId: "368910159844",
-            appId: "1:368910159844:web:148b22d919b29048af81f1"
-        };
+// 백엔드(server.js)를 통해 안전하게 Firebase 설정값 가져오기
+const response = await fetch('/api/config');
+const firebaseConfig = await response.json();
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const mapDocRef = doc(db, "gyeongju", "globalData");
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const mapDocRef = doc(db, "gyeongju", "globalData");
 
-        // --- 클라우드 실시간 동기화 데이터 ---
+// --- 클라우드 실시간 동기화 데이터 ---
         let favorites = [];
         let customLocations = [];
         let itinerary = { totalDays: 0, days: [] };
