@@ -883,7 +883,6 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
         // --- 탭 전환 글로벌 함수 ---
         window.switchTab = (tabId) => {
             activeMainTab = tabId;
-            updateItineraryModeUI(); // 탭 전환 시 UI 모드 최신화
             const tabs = ['btn-map', 'btn-list', 'btn-itinerary'];
             const views = ['map', 'list-view', 'itinerary-view'];
 
@@ -902,6 +901,8 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
                     view.classList.add('hidden');
                 }
             });
+
+            updateItineraryModeUI(); // 탭 전환 시 UI 모드 최신화 (다른 탭들의 hidden 처리가 끝난 후 실행해야 지도 뷰 모드일 때 map이 다시 표시됨)
 
             if (tabId === 'btn-map') {
                 rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
