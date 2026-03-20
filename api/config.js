@@ -1,7 +1,12 @@
 module.exports = function (req, res) {
   // CORS 처리 (필요에 따라 Vercel에서는 자동 지원될 수 있으나 명시적 추가)
+  const origin = req.headers.origin;
+  if (origin === 'https://subaks-travel-in-gyeongju.vercel.app' || (origin && origin.startsWith('http://localhost:'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://subaks-travel-in-gyeongju.vercel.app');
+  }
   res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
