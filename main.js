@@ -924,7 +924,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
             if (tabId === 'btn-map') {
                 rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
-                setTimeout(() => { map.invalidateSize(); if(window.fitAllMarkers) window.fitAllMarkers(); }, 50);
+                setTimeout(() => { map.invalidateSize(); if(window.fitAllMarkers) window.fitAllMarkers(); }, 300);
             } else if (tabId === 'btn-list') {
                 rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
             } else if (tabId === 'btn-itinerary') {
@@ -947,8 +947,28 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
         window.fitAllMarkers = () => {
             const allLocations = [...locations, ...customLocations];
-            if (allLocations.length === 0) return;
-            const group = new L.featureGroup(allLocations.map(loc => L.customMarker ? L.marker([loc.lat, loc.lng]) : L.marker([loc.lat, loc.lng])));
+            let markersToFit = [];
+            
+            if (activeTripId) {
+                const activeTrip = trips.find(t => t.id === activeTripId);
+                if (activeTrip) {
+                    activeTrip.days.forEach(day => {
+                        day.items.forEach(item => {
+                            const match = allLocations.find(l => l.name === item.name);
+                            if (match) markersToFit.push(match);
+                        });
+                    });
+                }
+            }
+            
+            // 특정 일정이 선택되지 않았거나 일정이 비어있다면 전체 마커를 기준으로 함
+            if (markersToFit.length === 0) {
+                markersToFit = allLocations;
+            }
+            
+            if (markersToFit.length === 0) return;
+            
+            const group = new L.featureGroup(markersToFit.map(loc => L.customMarker ? L.marker([loc.lat, loc.lng]) : L.marker([loc.lat, loc.lng])));
             map.invalidateSize();
             map.fitBounds(group.getBounds().pad(0.1), { maxZoom: 16 });
         };
@@ -1235,7 +1255,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
             if(activeMainTab === 'btn-itinerary' && (itineraryMode === 'view-map' || itineraryMode === 'view-list' || itineraryMode === 'edit')) {
                 rebuildMarkers();
                 if(itineraryMode === 'view-map') {
-                    setTimeout(() => map.invalidateSize(), 50);
+                    setTimeout(() => { map.invalidateSize(); if(window.fitAllMarkers) window.fitAllMarkers(); }, 300);
                 }
             }
         };
