@@ -367,11 +367,11 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
             const isItineraryMap = (activeMainTab === 'btn-itinerary' && itineraryMode === 'view-map');
 
             if (isItineraryMap && itinerary && itinerary.totalDays > 0) {
-                // 일정 모드 마커 렌더링 (순서 번호 적용)
-                let globalIndex = 1;
+                // 일정 모드 마커 렌더링 (Day별 순서 번호 적용)
                 const dayColors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#14B8A6', '#84CC16', '#6366F1', '#A855F7'];
 
                 itinerary.days.forEach((dayObj, dayIndex) => {
+                    let dailyIndex = 1;
                     const dCol = dayColors[dayIndex % dayColors.length];
                     const dayItems = dayObj.items || [];
                     const dayCoords = [];
@@ -380,13 +380,13 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
                         const loc = allLocations.find(l => l.name === item.name);
                         if (loc) {
                             dayCoords.push([loc.lat, loc.lng]);
-                            const marker = L.marker([loc.lat, loc.lng], { icon: createNumberedIcon(globalIndex, dCol) });
+                            const marker = L.marker([loc.lat, loc.lng], { icon: createNumberedIcon(dailyIndex, dCol) });
                             marker.bindPopup(getPopupContent({...loc, isItinerary: true}), { 
                                 className: 'custom-popup', closeButton: false, minWidth: 260, maxWidth: 260 
                             });
                             markersData.push({ marker: marker, type: loc.type, loc: loc });
                         }
-                        globalIndex++;
+                        dailyIndex++;
                     });
 
                     // 같은 날 마커들을 점선으로 연결
