@@ -111,8 +111,15 @@
 
     <!-- Itinerary Container (일정 뷰) -->
     <div id="itinerary-view" class="hidden flex-1 w-full bg-gray-100 z-20 flex-col overflow-hidden h-full">
-        <div class="w-full max-w-lg mx-auto py-6 px-4 h-full flex flex-col" id="itinerary-container">
-            <!-- 일정 UI 동적 삽입 영역 -->
+        <div class="w-full max-w-lg mx-auto h-full flex flex-col">
+            <div class="flex-1 overflow-y-auto py-6 px-4 no-scrollbar" id="itinerary-container">
+                <!-- 일정 UI 동적 삽입 영역 -->
+            </div>
+            <div id="itinerary-bottom-bar" class="hidden px-4 pb-4 pt-2 shrink-0">
+                <button type="button" id="btn-open-create-trip-modal-fixed" class="w-full py-3 bg-gray-800 hover:bg-gray-900 text-white text-sm font-bold rounded-xl shadow-sm cursor-pointer transition-colors flex items-center justify-center gap-2">
+                    ➕ 새 여행 만들기
+                </button>
+            </div>
         </div>
     </div>
 
@@ -255,8 +262,12 @@
                     <input type="text" id="edit-trip-name-input" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">여행 날짜 <span class="text-gray-400 font-normal">(선택)</span></label>
-                    <input type="text" id="edit-trip-date-input" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">여행 날짜</label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="edit-trip-date-start" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors">
+                        <span class="text-gray-400 text-sm font-bold">~</span>
+                        <input type="date" id="edit-trip-date-end" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors">
+                    </div>
                 </div>
             </div>
             <div class="flex justify-end gap-2">
@@ -266,7 +277,31 @@
         </div>
     </div>
 
-    <!-- Day 삭제 커스텀 모달 -->
+    <!-- 새 여행 만들기 모달 -->
+    <div id="trip-create-modal" class="fixed inset-0 z-[2000] hidden bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <h2 class="text-lg font-bold mb-4 text-gray-800">새 여행 시작하기 ✈️</h2>
+            <div class="flex flex-col gap-3 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">여행 이름</label>
+                    <input type="text" id="modal-new-trip-name" placeholder="예: 가족과 함께하는 봄나들이" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">여행 날짜 <span class="text-gray-400 font-normal">(선택)</span></label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="modal-new-trip-date-start" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors">
+                        <span class="text-gray-400 text-sm font-bold">~</span>
+                        <input type="date" id="modal-new-trip-date-end" class="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="document.getElementById('trip-create-modal').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors cursor-pointer">취소</button>
+                <button type="button" id="btn-confirm-create-trip" class="px-4 py-2 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-md transition-colors cursor-pointer">여행 만들기</button>
+            </div>
+        </div>
+    </div>
+
     <div id="day-delete-modal" class="fixed inset-0 z-[2000] hidden bg-black bg-opacity-50 flex items-center justify-center">
         <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4 text-center">
             <h2 class="text-lg font-bold mb-2 text-gray-800">Day 삭제 🗑️</h2>

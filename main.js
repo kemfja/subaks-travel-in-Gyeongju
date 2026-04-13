@@ -1336,13 +1336,24 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
         let tripToEdit = null;
 
+        // YY/MM/DD 문자열을 date input value(YYYY-MM-DD)로 역변환
+        const parseDateShort = (shortStr) => {
+            if (!shortStr) return '';
+            const parts = shortStr.split('/');
+            if (parts.length !== 3) return '';
+            return `20${parts[0]}-${parts[1]}-${parts[2]}`;
+        };
+
         window.editTrip = (e, tripId) => {
             e.stopPropagation();
             tripToEdit = tripId;
             const trip = trips.find(t => t.id === tripId);
             if(trip) {
                 document.getElementById('edit-trip-name-input').value = trip.name;
-                document.getElementById('edit-trip-date-input').value = trip.date || '';
+                // trip.date 형식: "26/03/21~26/03/23" 또는 "26/03/21" 또는 ""
+                const dateParts = (trip.date || '').split('~');
+                document.getElementById('edit-trip-date-start').value = parseDateShort(dateParts[0] || '');
+                document.getElementById('edit-trip-date-end').value = parseDateShort(dateParts[1] || dateParts[0] || '');
                 document.getElementById('trip-edit-modal').classList.remove('hidden');
             }
         };
@@ -1352,14 +1363,86 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
             const trip = trips.find(t => t.id === tripToEdit);
             if(trip) {
                 const newName = document.getElementById('edit-trip-name-input').value.trim();
-                const newDate = document.getElementById('edit-trip-date-input').value.trim();
+                const startDate = document.getElementById('edit-trip-date-start').value;
+                const endDate = document.getElementById('edit-trip-date-end').value;
+
+                if (!startDate || !endDate) {
+                    alert('여행 날짜를 선택해주세요!');
+                    return;
+                }
+
                 trip.name = newName || '새로운 일정';
-                trip.date = newDate;
+                trip.date = `${formatDateShort(startDate)}~${formatDateShort(endDate)}`;
+
+                // 날짜 변경 시 일수 재계산 (기존 Day 데이터 보존, 부족분 추가, 초과분 유지)
+                const msPerDay = 1000 * 60 * 60 * 24;
+                const newTotalDays = Math.max(1, Math.min(Math.round((new Date(endDate) - new Date(startDate)) / msPerDay) + 1, 30));
+                while (trip.days.length < newTotalDays) {
+                    trip.days.push({ items: [] });
+                }
+                trip.totalDays = newTotalDays;
+
                 saveTrips();
                 rebuildItineraryUI();
             }
             tripToEdit = null;
             document.getElementById('trip-edit-modal').classList.add('hidden');
+        });
+
+        // 날짜를 YY/MM/DD 형식으로 변환하는 헬퍼
+        const formatDateShort = (dateStr) => {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            const yy = String(d.getFullYear()).slice(2);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yy}/${mm}/${dd}`;
+        };
+
+        document.getElementById('btn-confirm-create-trip')?.addEventListener('click', () => {
+            const nameInput = document.getElementById('modal-new-trip-name');
+            const startDateInput = document.getElementById('modal-new-trip-date-start');
+            const endDateInput = document.getElementById('modal-new-trip-date-end');
+            
+            const name = nameInput.value.trim() || '새로운 일정';
+            const startDate = startDateInput ? startDateInput.value : '';
+            const endDate = endDateInput ? endDateInput.value : '';
+            let tripDate = '';
+            if (startDate && endDate) {
+                tripDate = `${formatDateShort(startDate)}~${formatDateShort(endDate)}`;
+            } else if (startDate) {
+                tripDate = formatDateShort(startDate);
+            }
+            if (!startDate || !endDate) {
+                alert('여행 날짜를 선택해주세요!');
+                return;
+            }
+
+            // 날짜 차이 계산 (시작일~종료일 포함이므로 +1)
+            const msPerDay = 1000 * 60 * 60 * 24;
+            const diffDays = Math.round((new Date(endDate) - new Date(startDate)) / msPerDay) + 1;
+            const totalDays = Math.max(1, Math.min(diffDays, 30));
+
+            const newTrip = {
+                id: 'trip-' + Date.now(),
+                name: name,
+                date: tripDate,
+                totalDays: totalDays,
+                days: Array.from({length: totalDays}, () => ({ items: [] }))
+            };
+
+            trips.unshift(newTrip);
+            saveTrips();
+            document.getElementById('trip-create-modal').classList.add('hidden');
+            rebuildItineraryUI();
+        });
+
+        // 하단 고정 버튼 이벤트 리스너
+        document.getElementById('btn-open-create-trip-modal-fixed')?.addEventListener('click', () => {
+            document.getElementById('modal-new-trip-name').value = '';
+            document.getElementById('modal-new-trip-date-start').value = '';
+            document.getElementById('modal-new-trip-date-end').value = '';
+            document.getElementById('trip-create-modal').classList.remove('hidden');
         });
 
         window.rebuildItineraryUI = () => {
@@ -1398,7 +1481,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
                                         <div class="flex flex-col gap-1 pr-6">
                                             <h3 class="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors">${trip.name}</h3>
                                             <p class="text-sm text-gray-500 font-medium">
-                                                ${trip.date ? `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md text-xs font-bold mr-2">${trip.date}</span>` : ''}총 ${trip.totalDays}일 일정
+                                                ${trip.date ? `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md text-xs font-bold mr-2">${trip.date}</span>` : ''}총 ${trip.days.length}일 일정
                                             </p>
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0">
@@ -1420,58 +1503,11 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
                     html += `</div>`;
                 }
 
-                // 여행 추가 폼 빌더
-                html += `
-                    <div class="mt-auto pt-6 border-t border-gray-200">
-                        <h3 class="text-base font-bold text-gray-800 mb-4">새 여행 시작하기</h3>
-                        <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 flex flex-col gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 mb-1">여행 이름</label>
-                                <input type="text" id="new-trip-name" placeholder="예: 가족과 함께하는 봄나들이" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 mb-1">여행 날짜 <span class="text-gray-400 font-normal">(선택)</span></label>
-                                <input type="text" id="new-trip-date" placeholder="예: 3/21~3/23" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-gray-600 mb-1">며칠 동안 가시나요?</label>
-                                <div class="flex items-center gap-3">
-                                    <button type="button" onclick="const p=document.getElementById('new-trip-days'); if(p.value>1)p.value--" class="w-8 h-8 rounded-full bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 font-bold flex flex-col items-center justify-center">-</button>
-                                    <input type="number" id="new-trip-days" value="2" min="1" max="10" class="w-16 h-8 text-center text-base font-bold border border-gray-300 bg-white rounded-lg outline-none" readonly>
-                                    <button type="button" onclick="const p=document.getElementById('new-trip-days'); if(p.value<10)p.value++" class="w-8 h-8 rounded-full bg-white border border-gray-300 hover:bg-gray-100 text-gray-800 font-bold flex flex-col items-center justify-center">+</button>
-                                    <span class="text-xs text-gray-400">최대 10일</span>
-                                </div>
-                            </div>
-                            <button type="button" id="btn-create-trip" class="mt-2 w-full py-2.5 bg-gray-800 hover:bg-gray-900 text-white text-sm font-bold rounded-xl shadow-sm cursor-pointer transition-colors">
-                                여행 만들기
-                            </button>
-                        </div>
-                    </div>
-                `;
-
                 container.innerHTML = html;
 
-                document.getElementById('btn-create-trip').addEventListener('click', () => {
-                    const nameInput = document.getElementById('new-trip-name');
-                    const dateInput = document.getElementById('new-trip-date');
-                    const daysInput = document.getElementById('new-trip-days');
-                    
-                    const name = nameInput.value.trim() || '새로운 일정';
-                    const tripDate = dateInput ? dateInput.value.trim() : '';
-                    const days = parseInt(daysInput.value, 10);
-
-                    const newTrip = {
-                        id: 'trip-' + Date.now(),
-                        name: name,
-                        date: tripDate,
-                        totalDays: days,
-                        days: Array.from({length: days}, () => ({ items: [] }))
-                    };
-
-                    trips.unshift(newTrip);
-                    saveTrips();
-                    rebuildItineraryUI(); // 새로고침해서 리스트에 반영
-                });
+                // 하단 고정 버튼 표시
+                const bottomBar = document.getElementById('itinerary-bottom-bar');
+                if (bottomBar) bottomBar.classList.remove('hidden');
 
                 // 여행 목록 드래그&드롭 리스트 (Sortable.js)
                 const tripListSortableEl = document.getElementById('trip-list-sortable');
@@ -1496,6 +1532,10 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
                 return;
             }
+
+            // 하단 버튼 숨기기 (상세뷰에서는 불필요)
+            const bottomBar2 = document.getElementById('itinerary-bottom-bar');
+            if (bottomBar2) bottomBar2.classList.add('hidden');
 
             // 2. 특정 여행이 선택된 상태 (여행 상세 뷰)
             const activeTrip = trips.find(t => t.id === activeTripId);
