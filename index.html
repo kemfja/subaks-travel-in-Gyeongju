@@ -75,10 +75,15 @@
     </header>
 
     <!-- 일정 서브 헤더 (모드 전환) - header 바로 아래 고정 배치 -->
-    <div id="itinerary-sub-header" class="hidden w-full bg-white border-b border-gray-200 p-2 flex justify-center gap-2 z-30 shrink-0 shadow-sm">
-        <button id="btn-mode-edit" class="px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors">✏️ 편집</button>
-        <button id="btn-mode-view-list" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200">👀 보기(리스트)</button>
-        <button id="btn-mode-view-map" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200">🗺️ 보기(지도)</button>
+    <div id="itinerary-sub-header" class="hidden w-full bg-white border-b border-gray-200 px-4 py-2 flex items-center z-30 shrink-0 shadow-sm">
+        <div id="itinerary-sub-header-left" class="flex items-center gap-2 shrink-0 mr-auto">
+            <!-- JS에서 동적으로 "나의 여행 목록" 또는 "⬅️ 여행 제목"이 렌더링됩니다 -->
+        </div>
+        <div id="itinerary-mode-buttons" class="hidden flex items-center justify-center gap-2">
+            <button id="btn-mode-edit" class="px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors">✏️ 편집</button>
+            <button id="btn-mode-view-list" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200">👀 보기(리스트)</button>
+            <button id="btn-mode-view-map" class="px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200">🗺️ 보기(지도)</button>
+        </div>
     </div>
 
     <!-- Map Container -->

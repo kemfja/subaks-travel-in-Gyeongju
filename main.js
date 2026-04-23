@@ -928,7 +928,10 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
             } else if (tabId === 'btn-list') {
                 rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
             } else if (tabId === 'btn-itinerary') {
+                activeTripId = null; // 일정 탭 클릭 시 항상 여행 목록(초기 페이지)으로 이동
+                itineraryMode = 'edit'; // 보기(지도) 등 모드도 기본값으로 초기화
                 if (window.rebuildItineraryUI) window.rebuildItineraryUI();
+                updateItineraryModeUI(); // 서브헤더도 즉시 갱신
             }
         };
 
@@ -1223,10 +1226,28 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
             const itiContainer = document.getElementById('itinerary-container');
             const mainMap = document.getElementById('map');
 
-            if (activeMainTab !== 'btn-itinerary' || !activeTripId) {
+            if (activeMainTab !== 'btn-itinerary') {
                 subHeader.classList.add('hidden');
             } else {
                 subHeader.classList.remove('hidden');
+            }
+
+            // 서브헤더 좌측 영역 업데이트 (여행 목록 제목 or 뒤로가기+여행명)
+            const subHeaderLeft = document.getElementById('itinerary-sub-header-left');
+            const modeButtons = document.getElementById('itinerary-mode-buttons');
+            if (subHeaderLeft) {
+                if (!activeTripId) {
+                    subHeaderLeft.innerHTML = `<h2 class="text-base font-extrabold text-gray-800 whitespace-nowrap">나의 여행 목록 🧳</h2>`;
+                    if (modeButtons) modeButtons.classList.add('hidden');
+                } else {
+                    const activeTrip = trips.find(t => t.id === activeTripId);
+                    const tripName = activeTrip ? activeTrip.name : '';
+                    subHeaderLeft.innerHTML = `
+                        <button type="button" onclick="goBackToTripList()" class="p-1 px-2 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors font-bold shrink-0 cursor-pointer">⬅️</button>
+                        <h2 class="text-base font-extrabold text-gray-800 truncate max-w-[200px]">${tripName}</h2>
+                    `;
+                    if (modeButtons) modeButtons.classList.remove('hidden');
+                }
             }
 
             // 초기화
@@ -1310,6 +1331,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
         window.goBackToTripList = () => {
             activeTripId = null;
+            itineraryMode = 'edit'; // 보기(지도) 등 모드도 기본값으로 초기화
             rebuildItineraryUI();
             updateItineraryModeUI();
             rebuildMarkers();
@@ -1326,7 +1348,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
         document.getElementById('btn-confirm-delete-trip')?.addEventListener('click', () => {
             if (!tripToDelete) return;
             trips = trips.filter(t => t.id !== tripToDelete);
-            if (activeTripId === tripToDelete) activeTripId = null;
+            if (activeTripId === tripToDelete) { activeTripId = null; itineraryMode = 'edit'; }
             saveTrips();
             rebuildItineraryUI();
             updateItineraryModeUI();
@@ -1454,11 +1476,7 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
 
             // 1. 활성화된 여행이 없을 때 (여행 목록 뷰)
             if (!activeTripId) {
-                let html = `
-                    <div class="flex justify-between items-center mb-6 px-1 mt-2">
-                        <h2 class="text-xl font-extrabold text-gray-800 shrink-0">나의 여행 목록 🧳</h2>
-                    </div>
-                `;
+                let html = ``;
 
                 if (!trips || trips.length === 0) {
                     html += `
@@ -1541,22 +1559,18 @@ const mapDocRef = doc(db, "gyeongju", "globalData");
             const activeTrip = trips.find(t => t.id === activeTripId);
             if (!activeTrip) {
                 activeTripId = null;
+                itineraryMode = 'edit';
                 rebuildItineraryUI();
                 return;
             }
 
-            let html = `
-                <div class="flex items-center gap-2 mb-6 px-1 mt-2">
-                    <button type="button" onclick="goBackToTripList()" class="p-1 px-2 -ml-2 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors font-bold shrink-0">⬅️</button>
-                    <h2 class="text-xl font-extrabold text-gray-800 truncate flex-1">${activeTrip.name}</h2>
-            `;
+            let html = ``;
             
             if (itineraryMode === 'edit') {
-                html += `<button type="button" onclick="resetItinerary()" class="text-xs font-semibold px-3 py-1.5 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors shrink-0 outline-none">초기화</button>`;
+                html += `<div class="flex justify-end px-1 mt-2 mb-4"><button type="button" onclick="resetItinerary()" class="text-xs font-semibold px-3 py-1.5 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors shrink-0 outline-none">초기화</button></div>`;
             }
 
             html += `
-                </div>
                 <div class="flex flex-col gap-6 overflow-y-auto pb-8 no-scrollbar" id="itinerary-days-wrapper">
             `;
 
