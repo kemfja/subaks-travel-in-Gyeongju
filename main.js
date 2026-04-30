@@ -2,9 +2,15 @@
 import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, orderBy, deleteDoc, updateDoc, arrayUnion, where, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
-// 백엔드(server.js)를 통해 안전하게 Firebase 설정값 가져오기
-const response = await fetch('/api/config');
-const firebaseConfig = await response.json();
+// Firebase 웹 설정 (클라이언트용 공개 설정 - 보안은 Firestore Rules가 담당)
+const firebaseConfig = {
+    apiKey: "AIzaSyDVdpX3rKwN5aR7a7lyA2C1b2d5lRRZWKI",
+    authDomain: "subak-map.firebaseapp.com",
+    projectId: "subak-map",
+    storageBucket: "subak-map.firebasestorage.app",
+    messagingSenderId: "368910159844",
+    appId: "1:368910159844:web:148b22d919b29048af81f1"
+};
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
