@@ -114,31 +114,11 @@ const migrateExistingData = async (uid) => {
     const userRef = doc(db, "users", uid, "data", "globalData");
     const userSnap = await getDoc(userRef);
     
-    // 이전에 저장된 구버전 데이터(favorites, trips)가 있다면 마이그레이션
+    // 이전에 저장된 구버전 데이터(favorites)만 마이그레이션 (trips는 보안을 위해 자동 이전 중단)
     if (oldSnap.exists() && !userSnap.exists()) {
         const oldData = oldSnap.data();
         await setDoc(userRef, { favorites: oldData.favorites || [] });
-        
-        if (oldData.trips && oldData.trips.length > 0) {
-            for (const t of oldData.trips) {
-                t.createdAt = t.createdAt || Date.now();
-                await setDoc(doc(db, "users", uid, "trips", t.id), t);
-            }
-        } else if (oldData.itinerary && oldData.itinerary.totalDays > 0) {
-            let migratedDays = oldData.itinerary.days || [];
-            if (migratedDays.length > 0 && Array.isArray(migratedDays[0])) {
-                migratedDays = migratedDays.map(arr => ({ items: arr || [] }));
-            }
-            const t = {
-                id: 'trip-' + Date.now(),
-                name: '내 첫 번째 여행',
-                totalDays: oldData.itinerary.totalDays,
-                days: migratedDays,
-                createdAt: Date.now()
-            };
-            await setDoc(doc(db, "users", uid, "trips", t.id), t);
-        }
-        console.log("✅ 기존 데이터 이전 완료!");
+        console.log("✅ 기존 즐겨찾기 데이터 이전 완료!");
     }
 };
 
@@ -193,6 +173,8 @@ const loadSharedTripsForUser = async (email) => {
     try {
         const sharesQuery = query(collection(db, "shares"), where("sharedEmail", "==", email.toLowerCase()));
         const sharesSnap = await getDocs(sharesQuery);
+        
+        console.log(`[공유 확인] ${email} 사용자의 공유 건수: ${sharesSnap.size}`);
         
         sharedTrips = [];
         // 기존 공유 구독 해제
