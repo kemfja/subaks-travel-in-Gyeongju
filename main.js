@@ -1641,6 +1641,9 @@ let locations = [];
                 
                 emailInput.value = '';
                 if(window.loadSharedEmails) window.loadSharedEmails(window.tripIdToShare);
+                
+                // 추가된 사용자 알림
+                alert(`${targetEmail}님에게 공유되었습니다.`);
             } catch (err) {
                 console.error(err);
                 alert('초대 실패: ' + err.message);
@@ -1848,13 +1851,21 @@ let locations = [];
                 name: name,
                 date: tripDate,
                 totalDays: totalDays,
-                days: Array.from({length: totalDays}, () => ({ items: [] }))
+                days: Array.from({length: totalDays}, () => ({ items: [] })),
+                createdAt: Date.now(),
+                allowedEmails: []
             };
 
-            trips.unshift(newTrip);
+            // 실시간성을 위해 로컬 데이터에 즉시 반영 (Optimistic UI)
+            ownedTrips.unshift(newTrip);
+            mergeTrips();
+            
             saveSingleTrip(newTrip);
+
+            nameInput.value = '';
+            if (startDateInput) startDateInput.value = '';
+            if (endDateInput) endDateInput.value = '';
             document.getElementById('trip-create-modal').classList.add('hidden');
-            rebuildItineraryUI();
         });
 
         document.getElementById('btn-open-create-trip-modal-fixed')?.addEventListener('click', () => {
