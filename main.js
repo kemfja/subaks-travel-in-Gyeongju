@@ -1225,6 +1225,37 @@ let locations = [];
             }, 100);
         };
 
+        window.switchToItineraryMapAndFocus = (encodedName) => {
+            const name = decodeURIComponent(encodedName);
+            
+            // 일정 탭 내의 '지도 보기' 모드로 설정
+            itineraryMode = 'view-map';
+            
+            // UI 및 마커 업데이트
+            updateItineraryModeUI();
+            rebuildItineraryUI();
+            rebuildMarkers();
+            
+            // 지도가 표시되고 마커가 생성될 때까지 약간의 지연 후 포커싱
+            setTimeout(() => {
+                map.invalidateSize();
+                
+                // markersData에서 해당 이름의 마커 찾기
+                const target = markersData.find(m => m.loc && m.loc.name === name);
+                if (target && target.marker) {
+                    // 마커 위치로 부드럽게 이동
+                    map.flyTo(target.marker.getLatLng(), 16, { animate: true, duration: 1.0 });
+                    
+                    // 팝업 즉시 열기
+                    target.marker.openPopup();
+                } else {
+                    console.warn("일정 지도에서 장소를 찾을 수 없습니다:", name);
+                    // 마커를 못 찾을 경우 전체를 보여줌
+                    if(window.fitAllMarkers) window.fitAllMarkers();
+                }
+            }, 400);
+        };
+
         // --- 탭 전환 글로벌 함수 ---
         const updateFilterPosition = () => {
             const filters = document.getElementById('filter-buttons-container');
@@ -2094,7 +2125,7 @@ let locations = [];
                 `;
 
                 activeTrip.days[i].items.forEach((item, index) => {
-                    const viewClickAttr = (itineraryMode === 'view-list') ? `onclick="navigateToMapWithLocation('${encodeURIComponent(item.name).replace(/'/g, "%27")}'); switchTab('btn-map');"` : '';
+                    const viewClickAttr = (itineraryMode === 'view-list') ? `onclick="switchToItineraryMapAndFocus('${encodeURIComponent(item.name).replace(/'/g, "%27")}')"` : '';
                     const cursorClass = (itineraryMode === 'view-list') ? 'cursor-pointer hover:shadow-md' : 'cursor-grab active:cursor-grabbing hover:bg-gray-100';
 
                     html += `
