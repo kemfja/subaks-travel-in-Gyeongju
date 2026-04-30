@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, orderBy, deleteDoc, updateDoc, arrayUnion, where, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, orderBy, deleteDoc, updateDoc, arrayUnion, arrayRemove, where, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
 // Firebase 웹 설정 (클라이언트용 공개 설정 - 보안은 Firestore Rules가 담당)
@@ -1591,6 +1591,14 @@ let locations = [];
 
         window.removeShare = async (shareDocId) => {
             try {
+                // shares 문서에서 정보 먼저 읽기
+                const shareSnap = await getDoc(doc(db, "shares", shareDocId));
+                if (shareSnap.exists()) {
+                    const shareData = shareSnap.data();
+                    // trip 문서의 allowedEmails에서 제거
+                    const tripRef = doc(db, "users", shareData.ownerUid, "trips", shareData.tripId);
+                    await updateDoc(tripRef, { allowedEmails: arrayRemove(shareData.sharedEmail) });
+                }
                 await deleteDoc(doc(db, "shares", shareDocId));
                 if(window.loadSharedEmails) window.loadSharedEmails(window.tripIdToShare);
             } catch (e) {
@@ -1607,12 +1615,17 @@ let locations = [];
 
             const shareDocId = `${targetEmail}_${window.tripIdToShare}`;
             try {
+                // 1. shares 컬렉션에 공유 기록 추가
                 await setDoc(doc(db, "shares", shareDocId), {
                     sharedEmail: targetEmail,
                     tripId: window.tripIdToShare,
                     ownerUid: currentUser.uid,
                     createdAt: Date.now()
                 });
+                // 2. trip 문서에 allowedEmails 배열 업데이트 (보안 규칙 통과용)
+                const tripRef = doc(db, "users", currentUser.uid, "trips", window.tripIdToShare);
+                await updateDoc(tripRef, { allowedEmails: arrayUnion(targetEmail) });
+                
                 emailInput.value = '';
                 if(window.loadSharedEmails) window.loadSharedEmails(window.tripIdToShare);
             } catch (err) {
