@@ -1600,21 +1600,21 @@ let locations = [];
             // 초기화
             [btnEdit, btnList, btnMap].forEach(b => {
                 if(!b) return;
-                b.className = 'px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200';
+                b.className = 'px-2 lg:px-4 py-1.5 rounded-md text-sm font-medium bg-white text-gray-500 hover:bg-gray-50 transition-colors border border-gray-200';
             });
 
             if (itineraryMode === 'edit') {
-                if(btnEdit) btnEdit.className = 'px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
+                if(btnEdit) btnEdit.className = 'px-2 lg:px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
                 itiView.classList.add('flex-1', 'h-full');
                 itiContainer.classList.remove('hidden');
                 if(activeMainTab === 'btn-itinerary') mainMap.classList.add('hidden');
             } else if (itineraryMode === 'view-list') {
-                if(btnList) btnList.className = 'px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
+                if(btnList) btnList.className = 'px-2 lg:px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
                 itiView.classList.add('flex-1', 'h-full');
                 itiContainer.classList.remove('hidden');
                 if(activeMainTab === 'btn-itinerary') mainMap.classList.add('hidden');
             } else if (itineraryMode === 'view-map') {
-                if(btnMap) btnMap.className = 'px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
+                if(btnMap) btnMap.className = 'px-2 lg:px-4 py-1.5 rounded-md text-sm font-bold bg-blue-50 text-blue-700 transition-colors border-none';
                 itiView.classList.remove('flex-1', 'h-full');
                 itiContainer.classList.add('hidden');
                 if(activeMainTab === 'btn-itinerary') mainMap.classList.remove('hidden');
