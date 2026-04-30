@@ -1782,9 +1782,22 @@ let locations = [];
 
         document.getElementById('btn-confirm-delete-trip')?.addEventListener('click', () => {
             if (!tripToDelete) return;
+            
+            // 로컬 상태에서도 즉시 삭제 반영 (ownedTrips에서도 제거)
+            ownedTrips = ownedTrips.filter(t => t.id !== tripToDelete);
+            sharedTrips = sharedTrips.filter(t => t.id !== tripToDelete);
             trips = trips.filter(t => t.id !== tripToDelete);
-            if (activeTripId === tripToDelete) { activeTripId = null; itineraryMode = 'edit'; }
+            
+            if (activeTripId === tripToDelete) { 
+                activeTripId = null; 
+                itineraryMode = 'edit'; 
+            }
+            
             removeTrip(tripToDelete);
+            
+            // 모달 닫기 및 상태 초기화
+            document.getElementById('trip-delete-modal').classList.add('hidden');
+            tripToDelete = null;
             
             setTimeout(() => rebuildItineraryUI(), 50);
         });
