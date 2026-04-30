@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, orderBy, deleteDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, getDoc, collection, query, orderBy, deleteDoc, updateDoc, arrayUnion, where, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
 // 백엔드(server.js)를 통해 안전하게 Firebase 설정값 가져오기
@@ -36,6 +36,9 @@ let unsubscribeGlobal = null;
 let unsubscribeUserGlobal = null;
 let unsubscribeTrips = null;
 let unsubscribeShared = null;
+let ownedTrips = [];
+let sharedTrips = [];
+let unsubscribeSharedTripsMap = {};
 
 const globalDocRef = doc(db, "gyeongju", "globalData");
 
@@ -77,8 +80,14 @@ const saveSingleTrip = async (trip) => {
     if (!currentUser || window.isSharedView) return;
     trip.createdAt = trip.createdAt || Date.now();
     try {
-        const tripRef = doc(db, "users", currentUser.uid, "trips", trip.id);
-        await setDoc(tripRef, trip, { merge: true });
+        const targetUid = trip.isShared && trip.ownerUid ? trip.ownerUid : currentUser.uid;
+        const tripRef = doc(db, "users", targetUid, "trips", trip.id);
+        
+        const dataToSave = { ...trip };
+        delete dataToSave.isShared;
+        delete dataToSave.ownerUid;
+        
+        await setDoc(tripRef, dataToSave, { merge: true });
     } catch(e) { console.error("여행 저장 실패", e); }
 };
 
@@ -832,7 +841,31 @@ let locations = [];
         // --- 필터링 상태 관리 및 로직 ---
         const allTypes = ['tour', 'food', 'cafe', 'transport', 'shop', 'stay'];
         let activeTypes = [...allTypes]; // 디폴트는 전체 선택 상태
-        let isFavoriteFilterActive = false; // 즐겨찾기 필터 상태
+        let isFavoriteFilterActive = false;
+        let listSearchQuery = '';
+
+        const listSearchInput = document.getElementById('list-search-input');
+        const listSearchClearBtn = document.getElementById('btn-clear-list-search');
+
+        listSearchInput?.addEventListener('input', (e) => {
+            listSearchQuery = e.target.value.trim().toLowerCase();
+            if (e.target.value.length > 0) {
+                listSearchClearBtn?.classList.remove('hidden');
+            } else {
+                listSearchClearBtn?.classList.add('hidden');
+            }
+            renderList();
+        });
+
+        listSearchClearBtn?.addEventListener('click', () => {
+            if(listSearchInput) {
+                listSearchInput.value = '';
+                listSearchQuery = '';
+                listSearchClearBtn.classList.add('hidden');
+                renderList();
+                listSearchInput.focus();
+            }
+        }); // 즐겨찾기 필터 상태
 
         // --- 정렬 상태 관리 ---
         let currentSortCol = null;
@@ -949,7 +982,8 @@ let locations = [];
             let filteredLocations = allLocations.filter(loc => {
                 const typeMatch = activeTypes.includes(loc.type);
                 const favMatch = isFavoriteFilterActive ? favorites.includes(loc.name) : true;
-                return typeMatch && favMatch;
+                const searchMatch = listSearchQuery === '' || loc.name.toLowerCase().includes(listSearchQuery) || (loc.address && loc.address.toLowerCase().includes(listSearchQuery));
+                return typeMatch && favMatch && searchMatch;
             });
             
             // 2. 정렬 상태가 있다면 데이터 정렬 적용
@@ -1074,6 +1108,23 @@ let locations = [];
         };
 
         // --- 탭 전환 글로벌 함수 ---
+        const updateFilterPosition = () => {
+            const filters = document.getElementById('filter-buttons-container');
+            if (!filters) return;
+            
+            if (activeMainTab === 'btn-map') {
+                filters.classList.remove('hidden');
+                filters.className = 'absolute top-3 right-3 z-[1000] flex flex-nowrap items-center gap-1 text-xs font-medium bg-white/70 backdrop-blur-sm px-2.5 py-1.5 rounded-xl shadow-md border border-gray-100';
+                document.getElementById('map').appendChild(filters);
+            } else if (activeMainTab === 'btn-list') {
+                filters.classList.remove('hidden');
+                filters.className = 'flex flex-nowrap overflow-x-auto no-scrollbar gap-2 text-xs font-medium w-full lg:w-auto shrink-0 justify-start lg:justify-end pb-1';
+                document.getElementById('list-filters-placeholder')?.appendChild(filters);
+            } else {
+                filters.classList.add('hidden');
+            }
+        };
+
         window.switchTab = (tabId) => {
             activeMainTab = tabId;
             const tabs = ['btn-map', 'btn-list', 'btn-itinerary'];
@@ -1095,19 +1146,21 @@ let locations = [];
                 }
             });
 
-            updateItineraryModeUI(); // 탭 전환 시 UI 모드 최신화 (다른 탭들의 hidden 처리가 끝난 후 실행해야 지도 뷰 모드일 때 map이 다시 표시됨)
+            updateItineraryModeUI();
 
             if (tabId === 'btn-map') {
-                rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
+                rebuildMarkers();
                 setTimeout(() => { map.invalidateSize(); if(window.fitAllMarkers) window.fitAllMarkers(); }, 300);
             } else if (tabId === 'btn-list') {
-                rebuildMarkers(); // 일정 뷰에서 돌아올 때 일반 마커 복원
+                rebuildMarkers();
             } else if (tabId === 'btn-itinerary') {
-                activeTripId = null; // 일정 탭 클릭 시 항상 여행 목록(초기 페이지)으로 이동
-                itineraryMode = 'edit'; // 보기(지도) 등 모드도 기본값으로 초기화
+                activeTripId = null;
+                itineraryMode = 'edit';
                 if (window.rebuildItineraryUI) window.rebuildItineraryUI();
-                updateItineraryModeUI(); // 서브헤더도 즉시 갱신
+                updateItineraryModeUI();
             }
+            
+            updateFilterPosition();
         };
 
         const btnMap = document.getElementById('btn-map');
@@ -1127,7 +1180,7 @@ let locations = [];
             const allLocations = [...locations, ...customLocations];
             let markersToFit = [];
             
-            if (activeTripId) {
+            if (activeMainTab === 'btn-itinerary' && activeTripId) {
                 const activeTrip = trips.find(t => t.id === activeTripId);
                 if (activeTrip) {
                     activeTrip.days.forEach(day => {
@@ -1138,7 +1191,6 @@ let locations = [];
                     });
                 }
             }
-            
             // 특정 일정이 선택되지 않았거나 일정이 비어있다면 전체 마커를 기준으로 함
             if (markersToFit.length === 0) {
                 markersToFit = allLocations;
@@ -1151,9 +1203,10 @@ let locations = [];
             map.fitBounds(group.getBounds().pad(0.1), { maxZoom: 16 });
         };
 
-        // 초기 줌 설정
+        // 초기 줌 설정 및 필터 위치 초기화
         setTimeout(() => {
             if(window.fitAllMarkers) window.fitAllMarkers();
+            updateFilterPosition();
         }, 800);
 
     
@@ -1459,7 +1512,86 @@ let locations = [];
         // 서브 헤더 이벤트 리스너 (module 스크립트는 DOMContentLoaded 이후 실행되므로 직접 등록)
         document.getElementById('btn-mode-edit').addEventListener('click', () => { itineraryMode = 'edit'; updateItineraryModeUI(); rebuildItineraryUI(); });
         document.getElementById('btn-mode-view-list').addEventListener('click', () => { itineraryMode = 'view-list'; updateItineraryModeUI(); rebuildItineraryUI(); });
-        document.getElementById('btn-mode-view-map').addEventListener('click', () => { itineraryMode = 'view-map'; updateItineraryModeUI(); rebuildItineraryUI(); });
+        document.getElementById('btn-mode-view-map').addEventListener('click', () => { 
+            itineraryMode = 'view-map'; 
+            updateItineraryModeUI(); 
+            rebuildItineraryUI(); 
+            rebuildMarkers();
+            setTimeout(() => { if(window.fitAllMarkers) window.fitAllMarkers(); }, 100);
+        });
+
+        document.getElementById('btn-open-share-modal')?.addEventListener('click', () => {
+            if (!currentUser) {
+                document.getElementById('login-required-modal').classList.remove('hidden');
+                return;
+            }
+            if (!activeTripId) return;
+            window.tripIdToShare = activeTripId;
+            document.getElementById('trip-share-modal')?.classList.remove('hidden');
+            if(window.loadSharedEmails) window.loadSharedEmails(activeTripId);
+        });
+
+        window.removeShare = async (shareDocId) => {
+            try {
+                await deleteDoc(doc(db, "shares", shareDocId));
+                if(window.loadSharedEmails) window.loadSharedEmails(window.tripIdToShare);
+            } catch (e) {
+                console.error(e);
+                alert('권한 회수에 실패했습니다.');
+            }
+        };
+
+        document.getElementById('share-add-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const emailInput = document.getElementById('share-new-email');
+            const targetEmail = emailInput.value.trim().toLowerCase();
+            if (!targetEmail || !window.tripIdToShare || !currentUser) return;
+
+            const shareDocId = `${targetEmail}_${window.tripIdToShare}`;
+            try {
+                await setDoc(doc(db, "shares", shareDocId), {
+                    sharedEmail: targetEmail,
+                    tripId: window.tripIdToShare,
+                    ownerUid: currentUser.uid,
+                    createdAt: Date.now()
+                });
+                emailInput.value = '';
+                if(window.loadSharedEmails) window.loadSharedEmails(window.tripIdToShare);
+            } catch (err) {
+                console.error(err);
+                alert('초대 실패: ' + err.message);
+            }
+        });
+
+        window.loadSharedEmails = async (tripId) => {
+            const listEl = document.getElementById('shared-emails-list');
+            if(!listEl) return;
+            listEl.innerHTML = '<div class="text-center py-4 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-100">로딩 중...</div>';
+            
+            try {
+                const q = query(collection(db, "shares"), where("tripId", "==", tripId));
+                const snap = await getDocs(q);
+                
+                if (snap.empty) {
+                    listEl.innerHTML = '<div class="text-center py-4 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-100">아직 공유된 사용자가 없습니다.</div>';
+                    return;
+                }
+                
+                let html = '';
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    html += `
+                    <div class="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                        <span class="text-sm font-medium text-gray-700">${data.sharedEmail}</span>
+                        <button type="button" onclick="removeShare('${docSnap.id}')" class="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded text-xs transition-colors cursor-pointer">삭제</button>
+                    </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            } catch(e) {
+                listEl.innerHTML = '<div class="text-center py-4 text-sm text-red-500 bg-red-50 rounded-lg border border-red-100">권한 정보를 불러오지 못했습니다.</div>';
+            }
+        };
 
         window.addNewDayToItinerary = () => {
         if (!activeTripId) return;
@@ -1498,6 +1630,7 @@ let locations = [];
 
         window.selectTrip = (tripId) => {
             activeTripId = tripId;
+            itineraryMode = 'view-list';
             rebuildItineraryUI();
             updateItineraryModeUI();
         };
@@ -1511,6 +1644,17 @@ let locations = [];
         };
 
         let tripToDelete = null;
+
+        window.openShareModalForTrip = (event, tripId) => {
+            event.stopPropagation();
+            if (!currentUser) {
+                document.getElementById('login-required-modal').classList.remove('hidden');
+                return;
+            }
+            window.tripIdToShare = tripId;
+            document.getElementById('trip-share-modal')?.classList.remove('hidden');
+            if(window.loadSharedEmails) window.loadSharedEmails(tripId);
+        };
 
         window.deleteTrip = (e, tripId) => {
             e.stopPropagation();
@@ -1631,7 +1775,7 @@ let locations = [];
 
         document.getElementById('btn-open-create-trip-modal-fixed')?.addEventListener('click', () => {
             if (!currentUser) {
-                alert('로그인이 필요한 기능입니다.');
+                document.getElementById('login-required-modal').classList.remove('hidden');
                 return;
             }
             document.getElementById('modal-new-trip-name').value = '';
@@ -1670,21 +1814,24 @@ let locations = [];
                                     </div>
                                     <div onclick="selectTrip('${trip.id}')" class="p-5 flex-1 flex items-center justify-between cursor-pointer">
                                         <div class="flex flex-col gap-1 pr-6">
-                                            <h3 class="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors">${trip.name}</h3>
+                                            <div class="flex items-center gap-2">
+                                                <h3 class="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors truncate max-w-[200px]">${trip.name}</h3>
+                                                ${trip.isShared ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-600 border border-blue-200 shrink-0">👥 공유됨</span>` : ''}
+                                            </div>
                                             <p class="text-sm text-gray-500 font-medium">
                                                 ${trip.date ? `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md text-xs font-bold mr-2">${trip.date}</span>` : ''}총 ${trip.days.length}일 일정
                                             </p>
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0">
+                                            ${!trip.isShared ? `<button onclick="openShareModalForTrip(event, '${trip.id}')" class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 hover:bg-green-100 hover:text-green-700 transition-colors" title="이 일정 공유 권한 관리">
+                                                🔗
+                                            </button>` : ''}
                                             <button onclick="editTrip(event, '${trip.id}')" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-colors" title="여행 정보 수정">
                                                 ✏️
                                             </button>
-                                            <button onclick="deleteTrip(event, '${trip.id}')" class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-colors" title="이 일정 삭제">
+                                            ${!trip.isShared ? `<button onclick="deleteTrip(event, '${trip.id}')" class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-500 hover:text-white transition-colors" title="이 일정 삭제">
                                                 🗑️
-                                            </button>
-                                            <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                                ➔
-                                            </div>
+                                            </button>` : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -1724,12 +1871,19 @@ let locations = [];
                 return;
             }
 
+            // 2. 특정 여행이 선택된 상태 (여행 상세 뷰)
+            const activeTrip = trips.find(t => t.id === activeTripId);
+
             // 하단 버튼 숨기기 (상세뷰에서는 불필요)
+            const btnShare = document.getElementById('btn-open-share-modal');
+            if (activeTrip && activeTrip.isShared) {
+                if (btnShare) btnShare.classList.add('hidden');
+            } else {
+                if (btnShare) btnShare.classList.remove('hidden');
+            }
             const bottomBar2 = document.getElementById('itinerary-bottom-bar');
             if (bottomBar2) bottomBar2.classList.add('hidden');
 
-            // 2. 특정 여행이 선택된 상태 (여행 상세 뷰)
-            const activeTrip = trips.find(t => t.id === activeTripId);
             if (!activeTrip) {
                 activeTripId = null;
                 itineraryMode = 'edit';
