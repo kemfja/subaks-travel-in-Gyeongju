@@ -394,9 +394,12 @@
 
             <div class="border-t border-gray-100 pt-4">
                 <h3 class="text-sm font-semibold text-gray-700 mb-2">새로운 사용자 초대</h3>
-                <form id="share-add-form" class="flex gap-2">
-                    <input type="email" id="share-new-email" placeholder="초대할 구글 이메일" required class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                    <button type="submit" class="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shrink-0 cursor-pointer">추가</button>
+                <form id="share-add-form" class="flex flex-col gap-2">
+                    <div class="flex gap-2">
+                        <input type="email" id="share-new-email" placeholder="초대할 구글 이메일" required class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                        <button type="submit" class="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shrink-0 cursor-pointer">추가</button>
+                    </div>
+                    <div id="share-error-msg" class="text-red-500 text-[11px] font-semibold hidden"></div>
                 </form>
             </div>
         </div>

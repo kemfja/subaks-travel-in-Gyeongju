@@ -225,9 +225,26 @@ const loadSharedTripsForUser = (email) => {
                         tripData.isShared = true;
                         tripData.ownerUid = ownerUid;
                         sharedTrips.push(tripData);
-                        console.log(`[공유 데이터 업데이트] ${tripData.name}`);
+                        console.log(`[공유 데이터 업데이트 완료] 일정명: ${tripData.name} (소유자: ${ownerUid})`);
+                    } else {
+                        console.warn(`[공유 데이터 경고] 일정이 존재하지 않거나 권한이 없습니다. (ID: ${tripId})`);
                     }
                     mergeTrips();
+                }, (err) => {
+                    console.warn(`[공유 구독 오류] 권한 상실 또는 지연 발생 (ID: ${tripId}). 2초 후 재시도 합니다.`, err);
+                    
+                    // 리스너 일단 정리
+                    if (unsubscribeSharedTripsMap[tripId]) {
+                        delete unsubscribeSharedTripsMap[tripId];
+                    }
+                    sharedTrips = sharedTrips.filter(t => t.id !== tripId);
+                    mergeTrips();
+
+                    // 권한 전파 지연 가능성 대비 2초 후 재시도 유도 (shares 스냅샷이 다시 트리거될 수 있게 유도)
+                    setTimeout(() => {
+                        console.log(`[공유 재시도] ID: ${tripId}`);
+                        // 별도 처리 없이 리스너 맵에서 지워졌으므로 다음 shares 스냅샷이나 loadUserData 시 재구독됨
+                    }, 2000);
                 });
                 unsubscribeSharedTripsMap[tripId] = unsub;
             });
@@ -1125,12 +1142,8 @@ let locations = [];
             });
         };
 
-        // 초기화 시 전체 렌더링 시작
-        const init = async () => {
-            await loadInitialData();
-            rebuildMarkers(); // updateFilters, renderList를 연쇄 호출함
-        };
-        init();
+        // 초기화는 이미 auth-state-listener 및 loadGlobalData에서 처리됨 (기존 broken init 제거)
+
 
         // --- 리스트에서 지도로 이동하는 글로벌 함수 ---
         window.navigateToMapWithLocation = (encodedName) => {
@@ -1623,31 +1636,49 @@ let locations = [];
         document.getElementById('share-add-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const emailInput = document.getElementById('share-new-email');
+            const errorMsg = document.getElementById('share-error-msg');
             const targetEmail = emailInput.value.trim().toLowerCase();
             if (!targetEmail || !window.tripIdToShare || !currentUser) return;
 
+            // 본인에게 공유 시도 방지
+            if (targetEmail === currentUser.email.toLowerCase()) {
+                if (errorMsg) {
+                    errorMsg.textContent = '본인에게는 공유할 수 없습니다.';
+                    errorMsg.classList.remove('hidden');
+                }
+                return;
+            }
+
             const shareDocId = `${targetEmail}_${window.tripIdToShare}`;
             try {
-                // 1. shares 컬렉션에 공유 기록 추가
+                if (errorMsg) errorMsg.classList.add('hidden');
+
+                // 1. trip 문서에 allowedEmails 배열 업데이트 (권한 부여 먼저!)
+                const tripRef = doc(db, "users", currentUser.uid, "trips", window.tripIdToShare);
+                await updateDoc(tripRef, { allowedEmails: arrayUnion(targetEmail) });
+
+                // 2. shares 컬렉션에 공유 기록 추가 (초대장은 권한 부여 후에 생성)
                 await setDoc(doc(db, "shares", shareDocId), {
                     sharedEmail: targetEmail,
                     tripId: window.tripIdToShare,
                     ownerUid: currentUser.uid,
                     createdAt: Date.now()
                 });
-                // 2. trip 문서에 allowedEmails 배열 업데이트 (보안 규칙 통과용)
-                const tripRef = doc(db, "users", currentUser.uid, "trips", window.tripIdToShare);
-                await updateDoc(tripRef, { allowedEmails: arrayUnion(targetEmail) });
                 
                 emailInput.value = '';
                 if(window.loadSharedEmails) window.loadSharedEmails(window.tripIdToShare);
-                
-                // 추가된 사용자 알림
-                alert(`${targetEmail}님에게 공유되었습니다.`);
+                console.log(`[공유 완료] ${targetEmail}님에게 공유되었습니다.`);
             } catch (err) {
                 console.error(err);
-                alert('초대 실패: ' + err.message);
+                if (errorMsg) {
+                    errorMsg.textContent = '초대 실패: 다시 시도해 주세요.';
+                    errorMsg.classList.remove('hidden');
+                }
             }
+        });
+
+        document.getElementById('share-new-email')?.addEventListener('input', () => {
+            document.getElementById('share-error-msg')?.classList.add('hidden');
         });
 
         window.loadSharedEmails = async (tripId) => {
