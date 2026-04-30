@@ -45,6 +45,7 @@ let unsubscribeShared = null;
 let ownedTrips = [];
 let sharedTrips = [];
 let unsubscribeSharedTripsMap = {};
+let unsubscribeSharesList = null;
 
 const globalDocRef = doc(db, "gyeongju", "globalData");
 
@@ -152,6 +153,7 @@ const loadGlobalData = () => {
 const loadUserData = (uid) => {
     if (unsubscribeUserGlobal) unsubscribeUserGlobal();
     if (unsubscribeTrips) unsubscribeTrips();
+    if (unsubscribeSharesList) unsubscribeSharesList();
     // 기존 공유 구독 해제
     Object.values(unsubscribeSharedTripsMap).forEach(unsub => unsub());
     unsubscribeSharedTripsMap = {};
@@ -177,43 +179,62 @@ const loadUserData = (uid) => {
     loadSharedTripsForUser(currentUser.email);
 };
 
-const loadSharedTripsForUser = async (email) => {
+const loadSharedTripsForUser = (email) => {
     if (!email) return;
     try {
         const sharesQuery = query(collection(db, "shares"), where("sharedEmail", "==", email.toLowerCase()));
-        const sharesSnap = await getDocs(sharesQuery);
         
-        console.log(`[공유 확인] ${email} 사용자의 공유 건수: ${sharesSnap.size}`);
+        if (unsubscribeSharesList) unsubscribeSharesList();
         
-        sharedTrips = [];
-        // 기존 공유 구독 해제
-        Object.values(unsubscribeSharedTripsMap).forEach(unsub => unsub());
-        unsubscribeSharedTripsMap = {};
-
-        if (sharesSnap.empty) {
-            mergeTrips();
-            return;
-        }
-
-        sharesSnap.forEach((shareDoc) => {
-            const shareData = shareDoc.data();
-            const { ownerUid, tripId } = shareData;
-            if (!ownerUid || !tripId) return;
-
-            const tripRef = doc(db, "users", ownerUid, "trips", tripId);
-            const unsub = onSnapshot(tripRef, (tripSnap) => {
-                // 기존 목록에서 이 tripId 제거
-                sharedTrips = sharedTrips.filter(t => t.id !== tripId);
-                
-                if (tripSnap.exists()) {
-                    const tripData = tripSnap.data();
-                    tripData.isShared = true;
-                    tripData.ownerUid = ownerUid;
-                    sharedTrips.push(tripData);
+        unsubscribeSharesList = onSnapshot(sharesQuery, (sharesSnap) => {
+            console.log(`[실시간 공유 확인] ${email} 사용자의 공유 데이터 변경 감지 (현재 ${sharesSnap.size}건)`);
+            
+            // 삭제된 문서 처리
+            sharesSnap.docChanges().forEach(change => {
+                if (change.type === "removed") {
+                    const shareData = change.doc.data();
+                    const tripId = shareData.tripId;
+                    console.log(`[공유 해제] 일정 ID: ${tripId}`);
+                    
+                    if (unsubscribeSharedTripsMap[tripId]) {
+                        unsubscribeSharedTripsMap[tripId]();
+                        delete unsubscribeSharedTripsMap[tripId];
+                    }
+                    sharedTrips = sharedTrips.filter(t => t.id !== tripId);
+                    mergeTrips();
                 }
-                mergeTrips();
             });
-            unsubscribeSharedTripsMap[tripId] = unsub;
+
+            // 전체 목록 기반으로 구독 설정 (신규 문서 포함)
+            sharesSnap.forEach((shareDoc) => {
+                const shareData = shareDoc.data();
+                const { ownerUid, tripId } = shareData;
+                if (!ownerUid || !tripId) return;
+
+                // 이미 구독 중인 일정이면 스킵
+                if (unsubscribeSharedTripsMap[tripId]) return;
+
+                const tripRef = doc(db, "users", ownerUid, "trips", tripId);
+                const unsub = onSnapshot(tripRef, (tripSnap) => {
+                    // 기존 목록에서 이 tripId 제거 (최신 데이터로 교체하기 위함)
+                    sharedTrips = sharedTrips.filter(t => t.id !== tripId);
+                    
+                    if (tripSnap.exists()) {
+                        const tripData = tripSnap.data();
+                        tripData.isShared = true;
+                        tripData.ownerUid = ownerUid;
+                        sharedTrips.push(tripData);
+                        console.log(`[공유 데이터 업데이트] ${tripData.name}`);
+                    }
+                    mergeTrips();
+                });
+                unsubscribeSharedTripsMap[tripId] = unsub;
+            });
+
+            if (sharesSnap.empty) {
+                sharedTrips = [];
+                mergeTrips();
+            }
         });
     } catch (e) {
         console.error("공유 일정 로드 실패:", e);
