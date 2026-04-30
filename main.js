@@ -163,6 +163,9 @@ const loadGlobalData = () => {
 const loadUserData = (uid) => {
     if (unsubscribeUserGlobal) unsubscribeUserGlobal();
     if (unsubscribeTrips) unsubscribeTrips();
+    // 기존 공유 구독 해제
+    Object.values(unsubscribeSharedTripsMap).forEach(unsub => unsub());
+    unsubscribeSharedTripsMap = {};
 
     const userGlobalRef = doc(db, "users", uid, "data", "globalData");
     const tripsColRef = collection(db, "users", uid, "trips");
@@ -173,14 +176,63 @@ const loadUserData = (uid) => {
         renderList();
     });
 
+    // 내 일정 로드
     unsubscribeTrips = onSnapshot(tripsColRef, (querySnapshot) => {
-        if (window.isSharedView) return; // 공유 뷰에서는 내 일정을 로드하지 않음
-        const newTrips = [];
-        querySnapshot.forEach((doc) => newTrips.push(doc.data()));
-        trips = newTrips.sort((a, b) => b.createdAt - a.createdAt);
-        if(window.rebuildItineraryUI) rebuildItineraryUI();
-        rebuildMarkers();
+        if (window.isSharedView) return;
+        ownedTrips = [];
+        querySnapshot.forEach((doc) => ownedTrips.push(doc.data()));
+        mergeTrips();
     });
+
+    // 나에게 공유된 일정 로드 (shares 컬렉션 조회)
+    loadSharedTripsForUser(currentUser.email);
+};
+
+const loadSharedTripsForUser = async (email) => {
+    if (!email) return;
+    try {
+        const sharesQuery = query(collection(db, "shares"), where("sharedEmail", "==", email.toLowerCase()));
+        const sharesSnap = await getDocs(sharesQuery);
+        
+        sharedTrips = [];
+        // 기존 공유 구독 해제
+        Object.values(unsubscribeSharedTripsMap).forEach(unsub => unsub());
+        unsubscribeSharedTripsMap = {};
+
+        if (sharesSnap.empty) {
+            mergeTrips();
+            return;
+        }
+
+        sharesSnap.forEach((shareDoc) => {
+            const shareData = shareDoc.data();
+            const { ownerUid, tripId } = shareData;
+            if (!ownerUid || !tripId) return;
+
+            const tripRef = doc(db, "users", ownerUid, "trips", tripId);
+            const unsub = onSnapshot(tripRef, (tripSnap) => {
+                // 기존 목록에서 이 tripId 제거
+                sharedTrips = sharedTrips.filter(t => t.id !== tripId);
+                
+                if (tripSnap.exists()) {
+                    const tripData = tripSnap.data();
+                    tripData.isShared = true;
+                    tripData.ownerUid = ownerUid;
+                    sharedTrips.push(tripData);
+                }
+                mergeTrips();
+            });
+            unsubscribeSharedTripsMap[tripId] = unsub;
+        });
+    } catch (e) {
+        console.error("공유 일정 로드 실패:", e);
+    }
+};
+
+const mergeTrips = () => {
+    trips = [...ownedTrips, ...sharedTrips].sort((a, b) => b.createdAt - a.createdAt);
+    if(window.rebuildItineraryUI) rebuildItineraryUI();
+    rebuildMarkers();
 };
 
 const loadSharedTrip = async (shareTripId, ownerUid) => {
