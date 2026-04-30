@@ -16,6 +16,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
 
 let currentUser = null;
 const MASTER_HASH = '3bda033cecd838fa5de1d537b301b631f129d6223299a1417a5a3f517387c6bd';
