@@ -1232,8 +1232,8 @@ let locations = [];
             
             if (activeMainTab === 'btn-map') {
                 filters.classList.remove('hidden');
-                // 인위적인 폭 제한을 없애고 화면 너비에 따라 자연스럽게 하나씩 내려가도록 수정
-                filters.className = 'absolute top-3 lg:top-4 left-1/2 lg:left-auto lg:right-4 -translate-x-1/2 lg:translate-x-0 z-[400] w-fit max-w-[94vw] lg:max-w-2xl bg-white/90 backdrop-blur-md px-2 py-2 rounded-3xl shadow-xl border border-white/20 flex flex-wrap lg:flex-nowrap items-center justify-center lg:justify-start gap-1 transition-all';
+                // 중앙 정렬 대신 우측 기점(right-4)으로 설정하여 좌측으로 유연하게 늘어나도록 수정
+                filters.className = 'absolute top-3 lg:top-4 right-4 z-[400] w-fit max-w-[calc(100%-32px)] bg-white/90 backdrop-blur-md px-2 py-2 rounded-3xl shadow-xl border border-white/20 flex flex-wrap lg:flex-nowrap items-center justify-end gap-1 transition-all';
                 document.getElementById('map').appendChild(filters);
             } else if (activeMainTab === 'btn-list') {
                 filters.classList.remove('hidden');
