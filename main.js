@@ -57,16 +57,46 @@ const updateUserUI = (user) => {
     const userAvatar = document.getElementById('user-avatar');
     const userName = document.getElementById('user-name');
     
+    // 모바일용 인증 영역 (제목 옆)
+    const mobileAuth = document.getElementById('auth-area-mobile');
+    
     if (user) {
-        btnLogin.classList.add('hidden');
-        userProfile.classList.remove('hidden');
-        userProfile.classList.add('flex');
-        userAvatar.src = user.photoURL || '';
-        userName.textContent = user.displayName || '사용자';
+        // PC UI
+        if(btnLogin) btnLogin.classList.add('hidden');
+        if(userProfile) {
+            userProfile.classList.remove('hidden');
+            userProfile.classList.add('flex');
+            if(userAvatar) userAvatar.src = user.photoURL || '';
+            if(userName) userName.textContent = user.displayName || '사용자';
+        }
+
+        // 모바일 UI 복제/이동
+        if (mobileAuth) {
+            mobileAuth.innerHTML = `
+                <div class="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded-full border border-gray-100 shadow-inner">
+                    <img class="w-5 h-5 rounded-full border border-gray-200" src="${user.photoURL || ''}" alt="Profile">
+                    <button id="btn-logout-mobile" class="text-[10px] text-gray-400 hover:text-red-500 font-medium cursor-pointer transition-colors px-1">로그아웃</button>
+                </div>
+            `;
+            document.getElementById('btn-logout-mobile')?.addEventListener('click', () => signOut(auth));
+        }
     } else {
-        btnLogin.classList.remove('hidden');
-        userProfile.classList.add('hidden');
-        userProfile.classList.remove('flex');
+        // PC UI
+        if(btnLogin) btnLogin.classList.remove('hidden');
+        if(userProfile) {
+            userProfile.classList.add('hidden');
+            userProfile.classList.remove('flex');
+        }
+
+        // 모바일 UI (로그인 버튼 표시)
+        if (mobileAuth) {
+            mobileAuth.innerHTML = `
+                <button id="btn-login-mobile" class="px-2 py-1 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-gray-700 flex items-center gap-1 shadow-sm">
+                    <span>Google</span>
+                </button>
+            `;
+            document.getElementById('btn-login-mobile')?.addEventListener('click', () => signInWithPopup(auth, provider));
+        }
     }
 };
 
@@ -1198,11 +1228,12 @@ let locations = [];
             
             if (activeMainTab === 'btn-map') {
                 filters.classList.remove('hidden');
-                filters.className = 'absolute top-3 right-3 z-[1000] flex flex-nowrap items-center gap-1 text-xs font-medium bg-white/70 backdrop-blur-sm px-2.5 py-1.5 rounded-xl shadow-md border border-gray-100';
+                // 모바일(좁을 때)은 flex-wrap으로 2줄 유도, PC(넓을 때)는 flex-nowrap으로 1줄 유지
+                filters.className = 'absolute top-3 lg:top-4 left-1/2 lg:left-auto lg:right-4 -translate-x-1/2 lg:translate-x-0 z-[400] w-[92%] lg:w-auto max-w-2xl bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-xl border border-white/20 flex flex-wrap lg:flex-nowrap items-center justify-center lg:justify-start gap-1.5 transition-all';
                 document.getElementById('map').appendChild(filters);
             } else if (activeMainTab === 'btn-list') {
                 filters.classList.remove('hidden');
-                filters.className = 'flex flex-nowrap overflow-x-auto no-scrollbar gap-2 text-xs font-medium w-full lg:w-auto shrink-0 justify-start lg:justify-end pb-1';
+                filters.className = 'flex items-center gap-1.5 overflow-x-auto no-scrollbar whitespace-nowrap w-full lg:w-auto shrink-0 justify-start lg:justify-end py-1';
                 document.getElementById('list-filters-placeholder')?.appendChild(filters);
             } else {
                 filters.classList.add('hidden');

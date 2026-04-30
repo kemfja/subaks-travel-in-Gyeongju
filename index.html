@@ -27,55 +27,59 @@
 <body class="bg-gray-50 flex flex-col h-screen overflow-hidden">
 
     <!-- Header -->
-    <header id="main-header" class="bg-white shadow-sm flex flex-col lg:flex-row items-center px-6 py-3 z-40 relative shrink-0 gap-4 justify-between border-b border-gray-200">
-        <!-- Left: Title -->
-        <div class="flex items-center shrink-0 mr-auto">
-            <h1 class="text-xl font-extrabold text-gray-800 tracking-tight shrink-0 flex items-center gap-1">
-                <span class="text-2xl drop-shadow-sm pb-1">🍉</span> 
+    <header id="main-header" class="bg-white shadow-sm flex flex-col lg:flex-row items-center px-4 lg:px-6 py-2 lg:py-3 z-40 relative shrink-0 border-b border-gray-200 gap-2 lg:gap-4">
+        <!-- Title & Mobile Auth Row -->
+        <div class="w-full lg:w-auto flex items-center justify-between lg:justify-start">
+            <h1 class="text-lg sm:text-xl font-extrabold text-gray-800 tracking-tight shrink-0 flex items-center gap-1">
+                <span class="text-xl sm:text-2xl drop-shadow-sm pb-1">🍉</span> 
                 <span class="bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700">SUBAK'S 나들이</span>
             </h1>
+            
+            <!-- Mobile/Small screen Auth (Hidden on large) -->
+            <div id="auth-area-mobile" class="flex lg:hidden items-center gap-2">
+                <!-- Auth content will be moved here by JS or cloned via CSS -->
+            </div>
         </div>
         
-        <!-- Center: Toggles -->
-        <div class="flex bg-gray-100 p-1 rounded-lg w-auto shrink-0 mx-auto">
-            <button id="btn-map" class="bg-white shadow-sm px-5 py-1.5 rounded-md text-sm font-bold text-gray-800 transition-all cursor-pointer">지도</button>
-            <button id="btn-list" class="px-5 py-1.5 rounded-md text-sm text-gray-500 font-medium hover:text-gray-800 transition-all cursor-pointer">리스트</button>
-            <button id="btn-itinerary" class="px-5 py-1.5 rounded-md text-sm text-gray-500 font-medium hover:text-gray-800 transition-all cursor-pointer">일정</button>
+        <!-- Tabs (Centered on PC) -->
+        <div class="flex bg-gray-100 p-1 rounded-lg w-full max-w-sm lg:w-auto lg:mx-auto justify-between shrink-0">
+            <button id="btn-map" class="flex-1 lg:flex-none bg-white shadow-sm px-3 lg:px-5 py-1.5 rounded-md text-xs sm:text-sm font-bold text-gray-800 transition-all cursor-pointer">지도</button>
+            <button id="btn-list" class="flex-1 lg:flex-none px-3 lg:px-5 py-1.5 rounded-md text-xs sm:text-sm text-gray-500 font-medium hover:text-gray-800 transition-all cursor-pointer">리스트</button>
+            <button id="btn-itinerary" class="flex-1 lg:flex-none px-3 lg:px-5 py-1.5 rounded-md text-xs sm:text-sm text-gray-500 font-medium hover:text-gray-800 transition-all cursor-pointer">일정</button>
             <div class="w-px bg-gray-300 mx-1 my-1"></div>
-            <button id="btn-add-marker" class="px-4 py-1.5 rounded-md text-sm text-blue-600 font-bold hover:bg-blue-50 transition-all flex items-center gap-1 cursor-pointer">➕ 직접 추가</button>
+            <button id="btn-add-marker" class="px-3 lg:px-4 py-1.5 rounded-md text-xs sm:text-sm text-blue-600 font-bold hover:bg-blue-50 transition-all flex items-center gap-0.5 cursor-pointer">➕ 직접 추가</button>
         </div>
 
-        <!-- Right: Auth Area -->
-        <div id="auth-area" class="flex items-center justify-end gap-2 shrink-0 ml-auto min-w-[120px]">
+        <!-- PC Auth Area (Hidden on small) -->
+        <div id="auth-area" class="hidden lg:flex items-center justify-end gap-2 shrink-0 min-w-[150px]">
             <!-- 비로그인 시 -->
-            <button id="btn-login" class="px-4 py-1.5 bg-white border border-gray-300 rounded-full text-sm font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
-                <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+            <button id="btn-login" class="px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-bold text-gray-700 hover:bg-gray-50 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
+                <svg width="14" height="14" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
                 <span>Google 로그인</span>
             </button>
             
             <!-- 로그인 시 -->
             <div id="user-profile" class="hidden items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 shadow-inner">
                 <img id="user-avatar" class="w-6 h-6 rounded-full border border-gray-200" src="" alt="Profile">
-                <span id="user-name" class="text-sm font-bold text-gray-700 hidden sm:inline-block"></span>
-                <div class="w-px h-3 bg-gray-300 mx-0.5"></div>
-                <button id="btn-logout" class="text-xs text-gray-500 hover:text-red-500 font-medium cursor-pointer transition-colors px-1">로그아웃</button>
+                <span id="user-name" class="text-xs font-bold text-gray-700"></span>
+                <button id="btn-logout" class="text-[10px] text-gray-400 hover:text-red-500 font-medium cursor-pointer transition-colors px-1">로그아웃</button>
             </div>
         </div>
     </header>
 
-    <!-- Global Filter Buttons (Hidden by default, moved dynamically) -->
-    <div id="filter-buttons-container" class="hidden">
-        <button class="filter-btn px-3 py-1.5 rounded-full border transition-all flex items-center shrink-0 cursor-pointer shadow-sm" data-type="all" data-active-bg="bg-gray-800" data-active-border="border-gray-800" data-active-text="text-white">전체</button>
-        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50" data-type="tour" data-active-bg="bg-blue-50" data-active-border="border-blue-200" data-active-text="text-blue-800"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 관광지</button>
-        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50" data-type="food" data-active-bg="bg-red-50" data-active-border="border-red-200" data-active-text="text-red-800"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> 맛집</button>
-        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50" data-type="cafe" data-active-bg="bg-green-50" data-active-border="border-green-200" data-active-text="text-green-800"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> 카페</button>
-        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50" data-type="transport" data-active-bg="bg-purple-50" data-active-border="border-purple-200" data-active-text="text-purple-800"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> 교통</button>
-        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50" data-type="shop" data-active-bg="bg-orange-50" data-active-border="border-orange-200" data-active-text="text-orange-800"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> 소품/서점</button>
-        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50" data-type="stay" data-active-bg="bg-cyan-50" data-active-border="border-cyan-200" data-active-text="text-cyan-800"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> 숙소</button>
+    <!-- Global Filter Buttons (Floating on Map) -->
+    <div id="filter-buttons-container" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[400] w-[92%] max-w-2xl bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-xl border border-white/20 flex flex-wrap lg:flex-nowrap items-center justify-center lg:justify-start gap-1.5 transition-all">
+        <button class="filter-btn px-3 py-1.5 rounded-full border transition-all flex items-center shrink-0 cursor-pointer shadow-sm text-xs font-bold" data-type="all" data-active-bg="bg-gray-800" data-active-border="border-gray-800" data-active-text="text-white">전체</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white border-gray-100 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50 text-xs font-bold" data-type="tour" data-active-bg="bg-blue-50" data-active-border="border-blue-200" data-active-text="text-blue-800"><span class="w-2 h-2 rounded-full bg-blue-500"></span> 관광지</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white border-gray-100 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50 text-xs font-bold" data-type="food" data-active-bg="bg-red-50" data-active-border="border-red-200" data-active-text="text-red-800"><span class="w-2 h-2 rounded-full bg-red-500"></span> 맛집</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white border-gray-100 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50 text-xs font-bold" data-type="cafe" data-active-bg="bg-green-50" data-active-border="border-green-200" data-active-text="text-green-800"><span class="w-2 h-2 rounded-full bg-green-500"></span> 카페</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white border-gray-100 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50 text-xs font-bold" data-type="transport" data-active-bg="bg-purple-50" data-active-border="border-purple-200" data-active-text="text-purple-800"><span class="w-2 h-2 rounded-full bg-purple-500"></span> 교통</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white border-gray-100 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50 text-xs font-bold" data-type="shop" data-active-bg="bg-orange-50" data-active-border="border-orange-200" data-active-text="text-orange-800"><span class="w-2 h-2 rounded-full bg-orange-500"></span> 소품/서점</button>
+        <button class="filter-btn px-3 py-1.5 rounded-full border bg-white border-gray-100 transition-all flex items-center gap-1 shrink-0 cursor-pointer shadow-sm hover:bg-gray-50 text-xs font-bold" data-type="stay" data-active-bg="bg-cyan-50" data-active-border="border-cyan-200" data-active-text="text-cyan-800"><span class="w-2 h-2 rounded-full bg-cyan-500"></span> 숙소</button>
         
-        <div class="w-px h-5 bg-gray-300 mx-1 my-auto shrink-0"></div>
-        <button id="btn-favorite-filter" class="px-3 py-1.5 rounded-full border bg-white border-gray-200 text-gray-400 opacity-70 transition-all flex items-center gap-1 shrink-0 cursor-pointer hover:bg-yellow-50 hover:border-yellow-200 hover:text-yellow-600 hover:opacity-100 shadow-sm">
-            <span class="text-yellow-400 text-sm leading-none pb-0.5">★</span> 찜
+        <div class="hidden lg:block w-px h-4 bg-gray-200 mx-0.5 shrink-0"></div>
+        <button id="btn-favorite-filter" class="px-3 py-1.5 rounded-full border bg-white border-gray-100 text-gray-400 transition-all flex items-center gap-1 shrink-0 cursor-pointer hover:bg-yellow-50 hover:border-yellow-200 hover:text-yellow-600 shadow-sm text-xs font-bold">
+            <span class="text-yellow-400 text-xs leading-none">★</span> 찜
         </button>
     </div>
 
