@@ -86,15 +86,24 @@ const saveSingleTrip = async (trip) => {
     if (!currentUser || window.isSharedView) return;
     trip.createdAt = trip.createdAt || Date.now();
     try {
-        const targetUid = trip.isShared && trip.ownerUid ? trip.ownerUid : currentUser.uid;
+        const isShared = !!trip.isShared;
+        const targetUid = isShared && trip.ownerUid ? trip.ownerUid : currentUser.uid;
         const tripRef = doc(db, "users", targetUid, "trips", trip.id);
         
+        // Firestore 저장 시 UI용 메타데이터(isShared, ownerUid 등)는 제외하고 복사본 저장
         const dataToSave = { ...trip };
         delete dataToSave.isShared;
         delete dataToSave.ownerUid;
         
+        // 공유받은 일정도 allowedEmails 필드를 유지해야 하므로 merge: true 사용
         await setDoc(tripRef, dataToSave, { merge: true });
-    } catch(e) { console.error("여행 저장 실패", e); }
+        if (isShared) console.log(`[협업] 공유받은 일정('${trip.name}')이 원본 소유자 계정에 저장되었습니다.`);
+    } catch(e) { 
+        console.error("여행 저장 실패", e);
+        if (e.code === 'permission-denied') {
+            alert("저장 권한이 없습니다. 마스터 계정의 공유 설정을 확인해주세요.");
+        }
+    }
 };
 
 const saveTrips = () => {
