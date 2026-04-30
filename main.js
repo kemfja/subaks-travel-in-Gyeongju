@@ -82,6 +82,10 @@ const saveSingleTrip = async (trip) => {
     } catch(e) { console.error("여행 저장 실패", e); }
 };
 
+const saveTrips = () => {
+    trips.forEach(t => saveSingleTrip(t));
+};
+
 const removeTrip = async (tripId) => {
     if (!currentUser || window.isSharedView) return;
     try {
@@ -1522,6 +1526,120 @@ let locations = [];
             
             setTimeout(() => rebuildItineraryUI(), 50);
         });
+
+        let tripToEdit = null;
+
+        window.editTrip = (e, tripId) => {
+            e.stopPropagation();
+            tripToEdit = tripId;
+            const targetTrip = trips.find(t => t.id === tripId);
+            if (targetTrip) {
+                document.getElementById('edit-trip-name-input').value = targetTrip.name || '';
+                if (targetTrip.date && targetTrip.date.includes('~')) {
+                    const parts = targetTrip.date.split('~');
+                    const parseDate = (dStr) => {
+                        if(!dStr) return '';
+                        const parts = dStr.split('/');
+                        if(parts.length !== 3) return '';
+                        return `20${parts[0]}-${parts[1]}-${parts[2]}`;
+                    };
+                    document.getElementById('edit-trip-date-start').value = parseDate(parts[0]);
+                    document.getElementById('edit-trip-date-end').value = parseDate(parts[1]);
+                } else {
+                    document.getElementById('edit-trip-date-start').value = '';
+                    document.getElementById('edit-trip-date-end').value = '';
+                }
+                document.getElementById('trip-edit-modal').classList.remove('hidden');
+            }
+        };
+
+        document.getElementById('btn-confirm-edit-trip')?.addEventListener('click', () => {
+            if (!tripToEdit) return;
+            const trip = trips.find(t => t.id === tripToEdit);
+            if (trip) {
+                const newName = document.getElementById('edit-trip-name-input').value.trim();
+                const startDate = document.getElementById('edit-trip-date-start').value;
+                const endDate = document.getElementById('edit-trip-date-end').value;
+
+                if (!startDate || !endDate) {
+                    alert('여행 날짜를 선택해주세요!');
+                    return;
+                }
+
+                trip.name = newName || '새로운 일정';
+                trip.date = `${formatDateShort(startDate)}~${formatDateShort(endDate)}`;
+
+                const msPerDay = 1000 * 60 * 60 * 24;
+                const newTotalDays = Math.max(1, Math.min(Math.round((new Date(endDate) - new Date(startDate)) / msPerDay) + 1, 30));
+                while (trip.days.length < newTotalDays) {
+                    trip.days.push({ items: [] });
+                }
+                trip.totalDays = newTotalDays;
+
+                saveSingleTrip(trip);
+                rebuildItineraryUI();
+            }
+            tripToEdit = null;
+            document.getElementById('trip-edit-modal').classList.add('hidden');
+        });
+
+        const formatDateShort = (dateStr) => {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            const yy = String(d.getFullYear()).slice(2);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yy}/${mm}/${dd}`;
+        };
+
+        document.getElementById('btn-confirm-create-trip')?.addEventListener('click', () => {
+            const nameInput = document.getElementById('modal-new-trip-name');
+            const startDateInput = document.getElementById('modal-new-trip-date-start');
+            const endDateInput = document.getElementById('modal-new-trip-date-end');
+            
+            const name = nameInput.value.trim() || '새로운 일정';
+            const startDate = startDateInput ? startDateInput.value : '';
+            const endDate = endDateInput ? endDateInput.value : '';
+            let tripDate = '';
+            if (startDate && endDate) {
+                tripDate = `${formatDateShort(startDate)}~${formatDateShort(endDate)}`;
+            } else if (startDate) {
+                tripDate = formatDateShort(startDate);
+            }
+            if (!startDate || !endDate) {
+                alert('여행 날짜를 선택해주세요!');
+                return;
+            }
+
+            const msPerDay = 1000 * 60 * 60 * 24;
+            const diffDays = Math.round((new Date(endDate) - new Date(startDate)) / msPerDay) + 1;
+            const totalDays = Math.max(1, Math.min(diffDays, 30));
+
+            const newTrip = {
+                id: 'trip-' + Date.now(),
+                name: name,
+                date: tripDate,
+                totalDays: totalDays,
+                days: Array.from({length: totalDays}, () => ({ items: [] }))
+            };
+
+            trips.unshift(newTrip);
+            saveSingleTrip(newTrip);
+            document.getElementById('trip-create-modal').classList.add('hidden');
+            rebuildItineraryUI();
+        });
+
+        document.getElementById('btn-open-create-trip-modal-fixed')?.addEventListener('click', () => {
+            if (!currentUser) {
+                alert('로그인이 필요한 기능입니다.');
+                return;
+            }
+            document.getElementById('modal-new-trip-name').value = '';
+            document.getElementById('modal-new-trip-date-start').value = '';
+            document.getElementById('modal-new-trip-date-end').value = '';
+            document.getElementById('trip-create-modal').classList.remove('hidden');
+        });
+
         window.rebuildItineraryUI = () => {
             const container = document.getElementById('itinerary-container');
             if(!container) return;
