@@ -388,7 +388,11 @@ setupAuth();
         const gyeongjuCenter = [35.8383, 129.2116];
         
         // 지도 초기화
-        const map = L.map('map').setView(gyeongjuCenter, 13);
+        // 지도 초기화 (줌 컨트롤은 나중에 좌측 하단으로 추가하기 위해 기본값 false)
+        const map = L.map('map', { zoomControl: false }).setView(gyeongjuCenter, 13);
+
+        // 줌 컨트롤을 좌측 하단으로 추가
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
         // OpenStreetMap 타일 레이어 추가
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1228,8 +1232,8 @@ let locations = [];
             
             if (activeMainTab === 'btn-map') {
                 filters.classList.remove('hidden');
-                // 모바일(좁을 때)은 flex-wrap으로 2줄 유도, PC(넓을 때)는 flex-nowrap으로 1줄 유지
-                filters.className = 'absolute top-3 lg:top-4 left-1/2 lg:left-auto lg:right-4 -translate-x-1/2 lg:translate-x-0 z-[400] w-[92%] lg:w-auto max-w-2xl bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-xl border border-white/20 flex flex-wrap lg:flex-nowrap items-center justify-center lg:justify-start gap-1.5 transition-all';
+                // w-[92%] 대신 w-fit을 사용하여 버튼들 크기에 맞춤
+                filters.className = 'absolute top-3 lg:top-4 left-1/2 lg:left-auto lg:right-4 -translate-x-1/2 lg:translate-x-0 z-[400] w-fit max-w-[95%] bg-white/90 backdrop-blur-md px-3 py-2 rounded-3xl shadow-xl border border-white/20 flex flex-wrap lg:flex-nowrap items-center justify-center lg:justify-start gap-1.5 transition-all';
                 document.getElementById('map').appendChild(filters);
             } else if (activeMainTab === 'btn-list') {
                 filters.classList.remove('hidden');
